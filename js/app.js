@@ -282,7 +282,7 @@
     });
     if (!item) { el('main').innerHTML = notFound('SAÉ introuvable', 'index.html#sae', 'SAÉ'); return; }
     const skillNames = {}; D.skills.hard.forEach((s) => (skillNames[s.id] = s.name));
-    const roleHTML = item.role ? `<p class="prose">${esc(item.role)}</p>` : `<p class="prose">[Organisation du travail (individuel / collectif) et rôle tenu dans le groupe.]</p>`;
+    const roleHTML = item.role ? `<p class="prose">${esc(item.role)}</p>` : `<p class="prose"></p>`;
     const pointsHTML = (item.points && item.points.length)
       ? `<h2>Réalisations &amp; points clés</h2><ul class="points">${item.points.map((pt) => `<li>${esc(pt)}</li>`).join('')}</ul>`
       : '';
@@ -302,12 +302,12 @@
           </div>
         </div></header>
         <div class="section"><div class="container container--narrow">
-          <h2>Présentation &amp; mission</h2><p class="prose">${esc(item.summary)}</p><p class="prose">[Présentation détaillée : contexte, objectifs et déroulé de la SAÉ.]</p>
+          <h2>Présentation &amp; mission</h2><p class="prose">${esc(item.summary)}</p><p class="prose"></p>
           <h2>Organisation &amp; mon rôle</h2>${roleHTML}
-          <h2>Difficultés &amp; défis</h2><p class="prose">[Difficultés rencontrées et comment elles ont été surmontées.]</p>
+          <h2>Difficultés &amp; défis</h2><p class="prose"></p>
           ${pointsHTML}
           <h2>Compétences mobilisées</h2>${compHTML}
-          <h2>Perspectives d'amélioration</h2><p class="prose">[Ce qui pourrait être amélioré ou poursuivi.]</p>
+          <h2>Perspectives d'amélioration</h2><p class="prose"></p>
         </div></div>
       </article>`;
   }
