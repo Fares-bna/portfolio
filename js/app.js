@@ -74,7 +74,6 @@
 
   function heroHTML() {
     const s = D.site;
-    const initials = s.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
     return `<section class="hero" id="accueil"><div class="container hero__grid">
       <div class="hero__text">
         <span class="hero__status reveal">${esc(s.status || s.lede)}</span>
@@ -92,8 +91,7 @@
         </div>
       </div>
       <div class="hero__avatar reveal" aria-hidden="true">
-        <span class="hero__avatar-fb">${esc(initials)}</span>
-        <img src="${esc(s.photo || '')}" alt="${esc(s.name)}" onerror="this.remove()" />
+        <img src="${esc(s.photo || '')}" alt="${esc(s.name)}" onerror="this.style.display='none'" />
       </div>
     </div></section>`;
   }
