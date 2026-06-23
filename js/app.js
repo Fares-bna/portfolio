@@ -23,6 +23,15 @@
     return 'Initiation';
   }
 
+  // Échelle qualitative des 6 compétences (sur 4)
+  const COMP_LEVELS = ['—', 'Initiation', 'Intermédiaire', 'Maîtrise', 'Expertise'];
+  const compLevelLabel = (n) => COMP_LEVELS[n] || '—';
+  function compDots(n) {
+    let s = '';
+    for (let i = 1; i <= 4; i++) s += `<span class="dot${i <= n ? ' dot--on' : ''}"></span>`;
+    return `<span class="dots" role="img" aria-label="Niveau ${n} sur 4">${s}</span>`;
+  }
+
   /* ---------- nav + footer (communs) ---------- */
   function navHTML() {
     const links = Object.entries(D.nav)
@@ -61,13 +70,26 @@
 
   function heroHTML() {
     const s = D.site;
-    return `<section class="hero" id="accueil"><div class="container">
-      <h1 class="hero__title reveal">${esc(s.name)}</h1>
-      <p class="hero__accroche reveal">${esc(s.tagline)}</p>
-      <p class="hero__lede reveal">${esc(s.lede)}</p>
-      <div class="hero__actions reveal">
-        <a href="#parcours" class="btn btn--primary">Découvrir mon parcours</a>
-        <a href="#competences" class="btn btn--ghost">Mes compétences →</a>
+    const initials = s.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+    return `<section class="hero" id="accueil"><div class="container hero__grid">
+      <div class="hero__text">
+        <span class="hero__status reveal">${esc(s.status || s.lede)}</span>
+        <h1 class="hero__title reveal">${esc(s.name)}</h1>
+        <p class="hero__accroche reveal">${esc(s.objective || s.tagline)}</p>
+        <p class="hero__lede reveal">${esc(s.intro || s.lede)}</p>
+        <div class="hero__actions reveal">
+          <a href="#competences" class="btn btn--primary">Mes compétences</a>
+          <a href="mailto:${esc(s.email)}" class="btn btn--ghost">Me contacter →</a>
+        </div>
+        <div class="hero__contacts reveal">
+          <a href="mailto:${esc(s.email)}">${esc(s.email)}</a>
+          <a href="${esc(s.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>
+          <a href="${esc(s.github)}" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </div>
+      <div class="hero__avatar reveal" aria-hidden="true">
+        <span class="hero__avatar-fb">${esc(initials)}</span>
+        <img src="${esc(s.photo || '')}" alt="${esc(s.name)}" onerror="this.remove()" />
       </div>
     </div></section>`;
   }
@@ -107,12 +129,13 @@
     </div></section>`;
   }
 
-  function projetHTML() {
-    const cards = D.projet.map((f) => `
-      <article class="feature reveal"><h3 class="feature__title">${esc(f.title)}</h3><p>${esc(f.text)}</p></article>`).join('');
-    return `<section class="section section--alt" id="projet"><div class="container">
-      ${sectionHead('Projet', 'Mon projet &amp; mon secteur', '')}
-      <div class="features">${cards}</div>
+  function objectifsHTML() {
+    const pl = D.projetPlus || {};
+    return `<section class="section section--alt" id="objectifs"><div class="container container--narrow">
+      ${sectionHead('Objectifs', 'Compétences à développer', '')}
+      <p class="prose reveal">${pl.developper || ''}</p>
+      <h3 class="objectifs__sub reveal">Mes objectifs · BUT 3 et après</h3>
+      <p class="prose reveal">${pl.objectifs || ''}</p>
     </div></section>`;
   }
 
@@ -133,11 +156,46 @@
         <span class="skill__cue">Voir le détail →</span>
       </a>`;
     }).join('');
-    const chips = D.skills.soft.map((s) => `<a class="chip" href="qualite.html?id=${esc(s.id)}">${esc(s.name)}</a>`).join('');
-    return `<section class="section" id="competences"><div class="container">
-      ${sectionHead('Compétences', 'Compétences &amp; progression', 'Mes compétences et leur progression au sein de mon parcours. Chaque carte ouvre une page avec ses preuves.')}
+    const defaultQ = D.skills.soft.find((s) => s.id === 'curiosite') || D.skills.soft[0];
+    const chips = D.skills.soft.map((s) => `<button class="chip softskill-btn${s.id === (defaultQ && defaultQ.id) ? ' is-active' : ''}" data-id="${esc(s.id)}">${esc(s.name)}</button>`).join('');
+    return `<section class="section section--alt" id="technologies"><div class="container">
+      ${sectionHead('Technologies', 'Technologies &amp; langages', '')}
       <div class="skills">${cards}</div>
       <div class="softskills"><span class="softskills__label">Savoir-être</span>${chips}</div>
+      <div class="softskill-detail" id="softskillDetail">
+        <p class="prose softskill-detail__text" id="softskillText">${defaultQ ? esc(defaultQ.text) : ''}</p>
+      </div>
+    </div></section>`;
+  }
+
+  function competencesOfficiellesHTML() {
+    const cards = (D.competences || []).map((c) => `
+      <a class="comp reveal" href="competence.html?id=${esc(c.id)}">
+        <div class="comp__top"><h3 class="comp__name">${esc(c.name)}</h3>${compDots(c.now)}</div>
+        <p class="comp__full">${esc(c.full)}</p>
+        <p class="comp__short">${esc(c.short)}</p>
+        <span class="comp__level">${esc(compLevelLabel(c.now))}</span>
+        <span class="comp__cue">Voir les preuves →</span>
+      </a>`).join('');
+    return `<section class="section" id="competences"><div class="container">
+      ${sectionHead('Compétences', 'Mes 6 compétences', 'Les six compétences du BUT Informatique, chacune appuyée par des preuves concrètes — SAÉ, projets, dépôts — et une analyse réflexive.')}
+      <div class="comps">${cards}</div>
+    </div></section>`;
+  }
+
+  function experiencesHTML() {
+    const s = D.site;
+    return `<section class="section section--alt" id="experiences"><div class="container container--narrow">
+      ${sectionHead('Expériences', 'Expériences professionnelles', '')}
+      <p class="prose reveal">Je n'ai pas encore réalisé de stage ni d'alternance : c'est précisément ce que je recherche pour le BUT 3. Mon expérience la plus proche du monde professionnel reste la SAÉ Colis (S3.01), menée pour un vrai commanditaire — le service reprographie de l'IUT — avec un cahier des charges, une équipe et une livraison attendue.</p>
+      <div class="reflist reflist--one">
+        <div class="refcard reveal"><span class="sae-card__id">Projet commandité</span>
+          <h3 class="refcard__title">Application de suivi de colis — IUT de Villetaneuse</h3>
+          <p class="refcard__desc">Commanditaire réel, équipe de cinq, cahier des charges et déploiement. Mon rôle : front-end et conception responsive.</p>
+          <div class="refcard__actions"><a href="sae.html?id=s3-01">Voir la SAÉ →</a></div>
+        </div>
+      </div>
+      <p class="prose reveal">Disponible pour une alternance — <a href="mailto:${esc(s.email)}">${esc(s.email)}</a>.</p>
     </div></section>`;
   }
 
@@ -179,8 +237,8 @@
 
   function renderHome() {
     el('main').innerHTML =
-      heroHTML() + parcoursHTML() + pourquoiHTML() + orientationHTML() +
-      projetHTML() + competencesHTML() + evolutionHTML() + saeHTML();
+      heroHTML() + parcoursHTML() + competencesOfficiellesHTML() + competencesHTML() +
+      objectifsHTML() + experiencesHTML() + saeHTML();
   }
 
   /* ---------- pages détail ---------- */
@@ -197,8 +255,50 @@
     return list.map((t) => `<span class="chip ${cls || ''}">${esc(t)}</span>`).join('');
   }
 
+  function renderCompetence6(c) {
+    const allSae = [...D.sae.but1, ...D.sae.but2];
+    const refs = [];
+    (c.saes || []).forEach((slug) => {
+      const sa = allSae.find((x) => x.slug === slug);
+      if (sa) refs.push({ kicker: 'SAÉ ' + sa.id, title: sa.title, desc: sa.summary, href: `sae.html?id=${slug}`, link: 'Voir la SAÉ →', github: sa.github });
+    });
+    (c.projects || []).forEach((slug) => {
+      const p = D.projects[slug];
+      if (p) refs.push({ kicker: 'Projet', title: p.title, desc: p.tagline, href: `projet.html?id=${slug}`, link: 'Voir le projet →', github: p.github });
+    });
+    const refHTML = refs.length ? `<h2>Expériences &amp; preuves</h2><div class="reflist">${refs.map((r) => `
+        <div class="refcard"><span class="sae-card__id">${esc(r.kicker)}</span><h3 class="refcard__title">${esc(r.title)}</h3><p class="refcard__desc">${esc(r.desc)}</p>
+        <div class="refcard__actions"><a href="${r.href}">${r.link}</a>${r.github ? `<a href="${esc(r.github)}" target="_blank" rel="noopener">Dépôt GitHub ↗</a>` : ''}</div></div>`).join('')}</div>` : '';
+    const skillNames = {}; D.skills.hard.forEach((s) => (skillNames[s.id] = s.name));
+    const langHTML = (c.langs && c.langs.length)
+      ? `<h2>Technologies mobilisées</h2><div class="detail__tags">${c.langs.map((l) => `<a class="chip" href="competence.html?id=${esc(l)}">${esc(skillNames[l] || l)}</a>`).join('')}</div>`
+      : '';
+    el('main').innerHTML = `
+      <article class="detail">
+        <header class="detail__hero"><div class="container">
+          <a class="detail__back" href="index.html#competences">← Compétences</a>
+          <p class="detail__meta">Compétence</p>
+          <h1 class="detail__title">${esc(c.full)}</h1>
+          <div class="comp-level reveal is-visible">${compDots(c.now)}<span>${esc(compLevelLabel(c.now))}</span></div>
+        </div></header>
+        <div class="section"><div class="container container--narrow">
+          <p class="prose">${esc(c.short)}</p>
+          <h2>Analyse réflexive</h2>
+          <div class="reflect">
+            <div class="reflect__q"><h3>Ce que j'ai appris</h3><p class="prose">${esc(c.appris)}</p></div>
+            <div class="reflect__q"><h3>Comment je le prouve</h3><p class="prose">${esc(c.prouver)}</p></div>
+            <div class="reflect__q"><h3>Ce qu'il me reste à améliorer</h3><p class="prose">${esc(c.ameliorer)}</p></div>
+          </div>
+          ${refHTML}
+          ${langHTML}
+        </div></div>
+      </article>`;
+  }
+
   function renderCompetence() {
     const id = params.get('id');
+    const c = (D.competences || []).find((x) => x.id === id);
+    if (c) { renderCompetence6(c); return; }
     const s = D.skills.hard.find((x) => x.id === id);
     if (!s) { el('main').innerHTML = notFound('Compétence introuvable', 'index.html#competences', 'Compétences'); return; }
     const isNew = s.before == null;
@@ -250,6 +350,8 @@
     if (!p) { el('main').innerHTML = notFound('Projet introuvable', 'index.html#competences', 'Compétences'); return; }
     const skillNames = {}; D.skills.hard.forEach((s) => (skillNames[s.id] = s.name));
     const skillChips = (p.skills || []).map((sid) => `<a class="chip" href="competence.html?id=${esc(sid)}">${esc(skillNames[sid] || sid)}</a>`).join('');
+    const compNames = {}; (D.competences || []).forEach((c) => (compNames[c.id] = c.name));
+    const compChips = (D.competences || []).filter((c) => (c.projects || []).includes(id)).map((c) => `<a class="chip chip--solid" href="competence.html?id=${esc(c.id)}">${esc(compNames[c.id] || c.id)}</a>`).join('');
     const points = (p.points || []).map((pt) => `<li>${esc(pt)}</li>`).join('');
     el('main').innerHTML = `
       <article class="detail">
@@ -268,7 +370,9 @@
           ${(p.images && p.images.length)
             ? p.images.map((src, i) => `<img class="projet__img" src="${esc(src)}" alt="Aperçu ${esc(p.title)} ${i + 1}" />`).join('')
             : `<div class="projet__img-placeholder">[Image ou capture d'écran à ajouter]</div>`}
-          <h2>Compétences mobilisées</h2><div class="detail__tags">${skillChips}</div>
+          <h2>Compétences mobilisées</h2>
+          ${compChips ? `<div class="detail__tags">${compChips}</div>` : ''}
+          ${skillChips ? `<div class="detail__tags" style="margin-top:12px">${skillChips}</div>` : ''}
         </div></div>
       </article>`;
   }
@@ -282,13 +386,42 @@
     });
     if (!item) { el('main').innerHTML = notFound('SAÉ introuvable', 'index.html#sae', 'SAÉ'); return; }
     const skillNames = {}; D.skills.hard.forEach((s) => (skillNames[s.id] = s.name));
-    const roleHTML = item.role ? `<p class="prose">${esc(item.role)}</p>` : `<p class="prose"></p>`;
-    const pointsHTML = (item.points && item.points.length)
-      ? `<h2>Réalisations &amp; points clés</h2><ul class="points">${item.points.map((pt) => `<li>${esc(pt)}</li>`).join('')}</ul>`
-      : '';
-    const compHTML = (item.skills && item.skills.length)
-      ? `<div class="detail__tags">${item.skills.map((id) => `<a class="chip" href="competence.html?id=${esc(id)}">${esc(skillNames[id] || id)}</a>`).join('')}</div>`
-      : `<p class="prose">[Compétences (hard puis soft) avec preuves, et niveau avant / après.]</p>`;
+    const compNames = {}; (D.competences || []).forEach((c) => (compNames[c.id] = c.name));
+
+    // Compétences (les 6) liées : explicites, sinon déduites des compétences qui citent cette SAÉ
+    let compIds = item.competences;
+    if (!compIds) compIds = (D.competences || []).filter((c) => (c.saes || []).includes(item.slug)).map((c) => c.id);
+    const compChips = compIds.length
+      ? `<div class="detail__tags">${compIds.map((cid) => `<a class="chip chip--solid" href="competence.html?id=${esc(cid)}">${esc(compNames[cid] || cid)}</a>`).join('')}</div>` : '';
+    const langChips = (item.skills && item.skills.length)
+      ? `<div class="detail__tags" style="margin-top:12px">${item.skills.map((sid) => `<a class="chip" href="competence.html?id=${esc(sid)}">${esc(skillNames[sid] || sid)}</a>`).join('')}</div>` : '';
+
+    const sec = [];
+    if (item.objectifs) sec.push(`<h2>Objectifs de la SAÉ</h2><p class="prose">${esc(item.objectifs)}</p>`);
+    sec.push(`<h2>Présentation &amp; déroulé</h2><p class="prose">${esc(item.recit || item.summary)}</p>`);
+    if (item.role) sec.push(`<h2>Mon rôle</h2><p class="prose">${esc(item.role)}</p>`);
+    if (item.taches) {
+      const li = (arr) => (arr || []).map((t) => `<li>${esc(t)}</li>`).join('');
+      sec.push(`<h2>Tâches accomplies</h2><div class="taches">
+        <div class="taches__col"><h3 class="taches__t">Individuellement</h3><ul class="points">${li(item.taches.individuel)}</ul></div>
+        <div class="taches__col"><h3 class="taches__t">Collectivement</h3><ul class="points">${li(item.taches.collectif)}</ul></div>
+      </div>`);
+    } else if (item.points && item.points.length) {
+      sec.push(`<h2>Réalisations</h2><ul class="points">${item.points.map((pt) => `<li>${esc(pt)}</li>`).join('')}</ul>`);
+    }
+    if (item.difficultes && item.difficultes.length) {
+      const d = item.difficultes.map((x) => `<div class="diff"><p class="prose"><b>Difficulté.</b> ${esc(x.probleme)}</p><p class="prose"><b>Solution.</b> ${esc(x.solution)}</p></div>`).join('');
+      sec.push(`<h2>Difficultés &amp; solutions</h2>${d}`);
+    }
+    let compBlock = `<h2>Compétences mobilisées</h2>`;
+    compBlock += compChips || `<p class="prose">À renseigner.</p>`;
+    if (langChips) compBlock += langChips;
+    if (item.niveaux && item.niveaux.length) {
+      compBlock += `<div class="niveaux">${item.niveaux.map((n) => `<div class="niveau"><a class="niveau__c" href="competence.html?id=${esc(n.comp)}">${esc(compNames[n.comp] || n.comp)}</a><span class="niveau__ba">${esc(n.avant)} <b>→ ${esc(n.apres)}</b></span></div>`).join('')}</div>`;
+    }
+    sec.push(compBlock);
+    if (item.perspectives) sec.push(`<h2>Perspectives d'amélioration</h2><p class="prose">${esc(item.perspectives)}</p>`);
+
     el('main').innerHTML = `
       <article class="detail">
         <header class="detail__hero"><div class="container">
@@ -302,12 +435,7 @@
           </div>
         </div></header>
         <div class="section"><div class="container container--narrow">
-          <h2>Présentation &amp; mission</h2><p class="prose">${esc(item.summary)}</p><p class="prose"></p>
-          <h2>Organisation &amp; mon rôle</h2>${roleHTML}
-          <h2>Difficultés &amp; défis</h2><p class="prose"></p>
-          ${pointsHTML}
-          <h2>Compétences mobilisées</h2>${compHTML}
-          <h2>Perspectives d'amélioration</h2><p class="prose"></p>
+          ${sec.join('\n          ')}
         </div></div>
       </article>`;
   }
@@ -372,10 +500,26 @@
     secs.forEach((s) => spy.observe(s));
   }
 
+  function wireSoftSkills() {
+    const btns = document.querySelectorAll('.softskill-btn');
+    const textEl = el('softskillText');
+    if (!btns.length || !textEl) return;
+    btns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const q = D.skills.soft.find((s) => s.id === id);
+        if (!q) return;
+        btns.forEach((b) => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        textEl.textContent = q.text;
+      });
+    });
+  }
+
   /* ---------- boot ---------- */
   el('navRoot').innerHTML = navHTML();
   el('footerRoot').innerHTML = footerHTML();
-  if (onHome) renderHome();
+  if (onHome) { renderHome(); wireSoftSkills(); }
   else if (page === 'competence') renderCompetence();
   else if (page === 'projet') renderProjet();
   else if (page === 'sae') renderSae();
