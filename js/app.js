@@ -90,9 +90,6 @@
           <a href="${esc(s.github)}" target="_blank" rel="noopener">GitHub</a>
         </div>
       </div>
-      <div class="hero__avatar reveal" aria-hidden="true">
-        <img src="${esc(s.photo || '')}" alt="${esc(s.name)}" onerror="this.style.display='none'" />
-      </div>
     </div></section>`;
   }
 
