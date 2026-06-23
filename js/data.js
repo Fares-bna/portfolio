@@ -145,16 +145,7 @@ int main(void) {
       },
       {
         id: 'php', name: 'PHP', before: null, now: 30, projects: [],
-        proof: "Compétence mise en pratique sur ce portfolio, que j'ai d'abord commencé à développer en PHP avant de le passer en statique (pour l'hérgement), extrait ci-dessous.",
-        code:
-`// Un fichier de données central alimentait tout le site
-$content = require __DIR__ . '/data/content.php';
-
-// chaque page bouclait sur ses données
-foreach ($content['sae']['but1'] as $sae) {
-    echo '<a href="sae.php?s=' . e($sae['slug']) . '">'
-       . e($sae['title']) . '</a>';
-}`,
+        proof: "Compétence apprise à l'aide de la SAE S4.01",
         story: [
           "PHP est une découverte de cette année, et ce portfolio en a été le premier vrai terrain : avant de le rendre statique, je l'avais entièrement construit en PHP.",
           "J'y ai mis en place une vraie organisation : un fichier de données central, des composants réutilisables et des pages générées automatiquement. C'est ce qui m'a fait comprendre l'intérêt de structurer un projet plutôt que d'empiler du code.",
@@ -257,7 +248,7 @@ foreach ($content['sae']['but1'] as $sae) {
       { id: 'S1.03', slug: 's1-03', title: "Installation d'un poste pour le développement",
         summary: "Mise en place et configuration d'un poste de travail virtuel pour le développement.", github: null },
       { id: 'S1.04', slug: 's1-04', title: "Création d'une base de données",
-        summary: "À partir de données écrites et de besoins formulés, création d'une base de données relationnelle pour une entreprise.", github: null ,
+        summary: "Identifier les clés primaires, obtenir les données avec Access et les traiter", github: "https://github.com/Fares-bna/S1.04_SAE-BD" ,
         skills: ['sql']},
 
       { id: 'S1.05', slug: 's1-05', title: 'Recueil de besoins',
