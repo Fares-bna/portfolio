@@ -37,11 +37,15 @@
     const links = Object.entries(D.nav)
       .map(([a, l]) => `<a href="${base}#${a}">${esc(l)}</a>`).join('');
     const [first, ...rest] = D.site.name.split(' ');
+    const cv = D.site.cv;
     return `
       <div class="nav__inner">
         <a href="${base || '#accueil'}" class="nav__brand">${esc(first)} <b>${esc(rest.join(' '))}</b></a>
-        <nav class="nav__links" id="navLinks">${links}</nav>
-        <button class="nav__toggle" id="navToggle" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
+        <div class="nav__right">
+          <nav class="nav__links" id="navLinks">${links}</nav>
+          ${cv ? `<a href="${esc(cv)}" class="nav__cv" download>CV ↓</a>` : ''}
+          <button class="nav__toggle" id="navToggle" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
+        </div>
       </div>`;
   }
 
@@ -79,7 +83,7 @@
         <p class="hero__lede reveal">${esc(s.intro || s.lede)}</p>
         <div class="hero__actions reveal">
           <a href="#competences" class="btn btn--primary">Mes compétences</a>
-          <a href="mailto:${esc(s.email)}" class="btn btn--ghost">Me contacter →</a>
+          ${s.cv ? `<a href="${esc(s.cv)}" class="btn btn--ghost" download>Télécharger mon CV ↓</a>` : ''}
         </div>
         <div class="hero__contacts reveal">
           <a href="mailto:${esc(s.email)}">${esc(s.email)}</a>
@@ -212,33 +216,39 @@
   }
 
   function saeHTML() {
-    const groups = [
-      { name: 'BUT1', range: 'S1.01 → S2.06', items: D.sae.but1 },
-      { name: 'BUT2', range: 'S3.01 · S4.01', items: D.sae.but2 },
-    ];
-    const blocks = groups.map((g) => {
-      const cards = g.items.map((s) => `
-        <a class="sae-card reveal" href="sae.html?id=${esc(s.slug)}">
-          <span class="sae-card__id">${esc(s.id)}</span>
-          <h4 class="sae-card__title">${esc(s.title)}</h4>
-          <p class="sae-card__desc">${esc(s.summary)}</p>
-          <span class="sae-card__more">Ouvrir →${s.github ? '<span class="mono">GitHub</span>' : ''}</span>
-        </a>`).join('');
-      return `<div class="sae-group">
-        <h3 class="sae-group__title reveal"><span class="sae-group__name">${esc(g.name)}</span><span class="sae-group__range">${esc(g.range)}</span></h3>
-        <div class="grid">${cards}</div>
-      </div>`;
-    }).join('');
+    const saeItems = [...D.sae.but1, ...D.sae.but2];
+    const saeCards = saeItems.map((s) => `
+      <a class="sae-card reveal" href="sae.html?id=${esc(s.slug)}">
+        <span class="sae-card__id">${esc(s.id)}</span>
+        <h4 class="sae-card__title">${esc(s.title)}</h4>
+        <p class="sae-card__desc">${esc(s.summary)}</p>
+        <span class="sae-card__more">Ouvrir →${s.github ? '<span class="mono">GitHub</span>' : ''}</span>
+      </a>`).join('');
+    const projItems = Object.entries(D.projects);
+    const projCards = projItems.map(([slug, p]) => `
+      <a class="sae-card reveal" href="projet.html?id=${esc(slug)}">
+        <span class="sae-card__id">${esc(p.domain || 'Projet')}</span>
+        <h4 class="sae-card__title">${esc(p.title)}</h4>
+        <p class="sae-card__desc">${esc(p.tagline || p.summary || '')}</p>
+        <span class="sae-card__more">Ouvrir →${p.github ? '<span class="mono">GitHub</span>' : ''}</span>
+      </a>`).join('');
     return `<section class="section" id="sae"><div class="container">
-      ${sectionHead('SAÉ', "Situations d'apprentissage", '')}
-      ${blocks}
+      ${sectionHead('Réalisations', 'Réalisations', '')}
+      <div class="sae-group">
+        <h3 class="sae-group__title reveal"><span class="sae-group__name">SAÉ</span><span class="sae-group__range">S1.01 → S4.01</span></h3>
+        <div class="grid">${saeCards}</div>
+      </div>
+      <div class="sae-group">
+        <h3 class="sae-group__title reveal"><span class="sae-group__name">Projets perso</span><span class="sae-group__range">${projItems.length} projets</span></h3>
+        <div class="grid">${projCards}</div>
+      </div>
     </div></section>`;
   }
 
   function renderHome() {
     el('main').innerHTML =
-      heroHTML() + parcoursHTML() + competencesOfficiellesHTML() + competencesHTML() +
-      objectifsHTML() + experiencesHTML() + saeHTML();
+      heroHTML() + competencesOfficiellesHTML() + competencesHTML() +
+      objectifsHTML() + experiencesHTML() + parcoursHTML() + saeHTML();
   }
 
   /* ---------- pages détail ---------- */
@@ -307,9 +317,7 @@
     const scale = isNew
       ? `<span class="skill__pt--new">Nouveau · ${esc(yr.now)}</span><span>${s.now}%</span>`
       : `<span>${esc(yr.before)} · ${s.before}%</span><span class="skill__pt--now">${esc(yr.now)} · ${s.now}%</span>`;
-    const story = (s.story || []).map((p) => `<p class="prose">${esc(p)}</p>`).join('');
-
-    // Réalisations liées : toutes les SAÉ et projets qui déclarent ce skill
+    // Réalisations liées : SAÉ + projets qui déclarent ce skill (toutes joignables)
     const allSae = [...D.sae.but1, ...D.sae.but2];
     const refs = [];
     allSae.filter((sa) => (sa.skills || []).includes(id)).forEach((sa) => {
@@ -318,7 +326,7 @@
     Object.entries(D.projects).filter(([, p]) => (p.skills || []).includes(id)).forEach(([slug, p]) => {
       refs.push({ kicker: 'Projet', title: p.title, desc: p.tagline, href: `projet.html?id=${slug}`, link: 'Voir le projet →', github: p.github });
     });
-    const refHTML = refs.length ? `<h2>Projets &amp; SAÉ liés</h2><div class="reflist">${refs.map((r) => `
+    const refHTML = refs.length ? `<h2>Projets liés</h2><div class="reflist">${refs.map((r) => `
         <div class="refcard"><span class="sae-card__id">${esc(r.kicker)}</span><h3 class="refcard__title">${esc(r.title)}</h3><p class="refcard__desc">${esc(r.desc)}</p>
         <div class="refcard__actions"><a href="${r.href}">${r.link}</a>${r.github ? `<a href="${esc(r.github)}" target="_blank" rel="noopener">Dépôt GitHub ↗</a>` : ''}</div></div>`).join('')}</div>` : '';
     const codeHTML = s.code ? `<h2>Extrait de code</h2><pre class="codeblock"><code>${esc(s.code)}</code></pre>` : '';
@@ -333,10 +341,9 @@
             <div class="skill__track"><span class="skill__fill"></span>${isNew ? '' : '<span class="skill__before" aria-hidden="true"></span>'}</div>
             <div class="skill__scale" style="margin-top:10px;">${scale}</div>
           </div>
+          ${s.github ? `<div class="detail__actions"><a class="btn btn--primary" href="${esc(s.github)}" target="_blank" rel="noopener">Voir sur GitHub ↗</a></div>` : ''}
         </div></header>
         <div class="section"><div class="container container--narrow">
-          <h2>Comment j'en suis arrivé là</h2>
-          ${story}
           ${s.proof ? `<p class="proofnote">${esc(s.proof)}</p>` : ''}
           ${refHTML}
           ${codeHTML}

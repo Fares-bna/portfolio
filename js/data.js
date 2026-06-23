@@ -16,15 +16,16 @@ window.DATA = {
     status: 'Étudiant en 2ᵉ année de BUT Informatique',
     objective: "À la recherche d'une alternance pour le BUT 3",
     photo: 'assets/img/profil.png',
+    cv: 'assets/CV-Fares-BENNANI.pdf',
     intro: "La curiosité est sans doute ce qui me décrit le mieux. J'ai besoin de comprendre comment les choses fonctionnent en profondeur, pas seulement de savoir m'en servir : quand un sujet m'accroche, je vais chercher plus loin, je teste par moi-même et je n'abandonne pas tant que je n'ai pas saisi la logique derrière. C'est elle qui me pousse à toujours aller un cran plus loin dans ce que je construis.",
   },
 
   // Navigation (ancre -> libellé)
   nav: {
-    parcours: 'Parcours',
     competences: 'Compétences',
     objectifs: 'Objectifs',
-    sae: 'SAÉ',
+    parcours: 'Parcours',
+    sae: 'Réalisations',
   },
 
   // Parcours (timeline)
@@ -67,7 +68,7 @@ window.DATA = {
       short: "Concevoir et développer une application complète, de l'analyse du besoin jusqu'à une solution qui fonctionne.",
       before: 2, now: 3,
       saes: ['s1-01', 's3-01', 's4-01'],
-      projects: ['projet-android', 'projet-js', 'jeu-memoire', 'refonte-site'],
+      projects: ['projet-android', 'projet-js', 'refonte-site'],
       langs: ['c', 'java', 'js', 'android', 'php', 'python', 'vbnet'],
       appris: "J'ai appris à partir d'un besoin réel et à le transformer en une application qui fonctionne, pas seulement en code qui compile. Le projet Colis (S3.01), commandé par un service de l'IUT, m'a fait passer de l'exercice scolaire à une vraie commande, avec un commanditaire à satisfaire.",
       prouver: "Je le démontre par des applications complètes : la gestion de la vie scolaire en C, l'application de suivi de colis en Flask, mes applications Android et mes TP JavaScript (Express, Vue).",
@@ -79,7 +80,7 @@ window.DATA = {
       short: "Mesurer puis améliorer la performance, la lisibilité et la fiabilité d'un programme ou d'une base de données.",
       before: 2, now: 3,
       saes: ['s1-02', 's2-02'],
-      projects: ['optim-bdd'],
+      projects: [],
       langs: ['sql', 'java'],
       appris: "J'ai appris qu'optimiser commence par mesurer. En base de données, le passage d'une vue classique à une vue matérialisée a divisé le temps d'exécution par plus de cent sur le même résultat. En algorithmique, comparer deux approches m'a montré qu'un bon algorithme vaut mieux que du code micro-optimisé.",
       prouver: "Mes travaux SQL (vues matérialisées, normalisation, analyse de coût) et la SAÉ d'algorithmique (plus court chemin avec Dijkstra) en sont la preuve directe.",
@@ -103,7 +104,7 @@ window.DATA = {
       short: "Modéliser, interroger et exploiter des données fiables au service d'une application.",
       before: 2, now: 3,
       saes: ['s1-04', 's2-04', 's3-01'],
-      projects: ['optim-bdd'],
+      projects: [],
       langs: ['sql'],
       appris: "J'ai appris à modéliser une base à partir d'un besoin, puis à l'interroger efficacement. Sur Colis, la base comptait neuf tables liées : il fallait penser les relations avant d'écrire la moindre requête.",
       prouver: "La création d'une base sous Access (S1.04), l'exploitation d'une base existante (S2.04), mes travaux SQL avancés et la base MySQL de l'application Colis.",
@@ -148,9 +149,9 @@ window.DATA = {
         ],
       },
       {
-        id: 'sql', name: 'SQL & bases de données', before: 60, now: 76, projects: ['optim-bdd'],
+        id: 'sql', name: 'SQL & bases de données', before: 60, now: 76, projects: [],
         github: 'https://github.com/Fares-bna/tpSql',
-        proof: "Compétence attestée par mes SAÉ contenant des bases de données ainsi que les travaux pratiques effectués en cours (dépot disponible avec le projet) : jointures, sous-requêtes, agrégation, vues matérialisées et types composites PostgreSQL.",
+        proof: "Compétence attestée par mes SAÉ contenant des bases de données ainsi que les travaux pratiques de SQL (dépôt tpSql à l'appui) : jointures, sous-requêtes, agrégation, vues matérialisées et types composites PostgreSQL.",
       
         story: [
           "Les bases de données reviennent à chaque semestre depuis la première année. J'ai commencé par la modélisation et l'écriture de requêtes, puis je suis passé à des bases déjà en place qu'il fallait comprendre et exploiter.",
@@ -175,8 +176,8 @@ window.DATA = {
         ],
       },
       {
-        id: 'progsys', name: 'Programmation système', before: 40, now: 50, projects: [],
-        proof: "Compétence justifiée par un travail bas-niveau en C, en lien direct avec le système, comme dans l'extrait ci-dessous.",
+        id: 'progsys', name: 'Programmation système', before: 80, now: 85, projects: [],
+        proof: "Compétence acquise et maîtrisée dès la première année, mobilisée dans de nombreux contextes : gestion de fichiers et de flux en C, manipulation fine de la mémoire et des pointeurs, création et synchronisation de processus, et lecture bas niveau des entrées/sorties via les appels système.",
         code:
 `/* Lecture d'un fichier caractère par caractère, en C */
 #include <stdio.h>
@@ -193,8 +194,8 @@ int main(void) {
     return 0;
 }`,
         story: [
-          "La programmation système est venue naturellement après le C. On y descend encore d'un cran : on parle directement au système d'exploitation, on manipule les processus, la mémoire et les fichiers.",
-          "Je m'y suis confronté à travers des exercices bas niveau en C, où la moindre erreur se paie tout de suite. C'est exigeant, mais c'est aussi ce qui m'a fait vraiment comprendre comment fonctionne une machine.",
+          "La programmation système, je l'ai maîtrisée dès la première année. C'est là que j'ai vraiment compris ce qui se passe sous le capot : comment un programme dialogue avec le système d'exploitation, gère sa mémoire et accède aux fichiers.",
+          "Je l'ai pratiquée dans de nombreux contextes en C — manipulation de fichiers et de flux, gestion de la mémoire et des pointeurs, processus et appels système. À force d'exercices bas niveau où la moindre erreur se paie tout de suite, c'est devenu un terrain sur lequel je suis pleinement à l'aise.",
         ],
       },
       {
@@ -222,7 +223,7 @@ int main(void) {
         ],
       },
       {
-        id: 'vbnet', name: 'VB .NET Framework', before: 45, now: 45, projects: ['jeu-memoire'],
+        id: 'vbnet', name: 'VB .NET Framework', before: 45, now: 45, projects: [],
         proof: "Compétence attestée par un projet d'interface graphique en VB .NET (jeu de mémoire, ci-dessous).",
         story: [
           "J'ai utilisé VB .NET en BUT1 pour créer des interfaces graphiques, dont un jeu de mémoire. C'était ma première approche du développement d'applications avec une interface visuelle.",
@@ -257,16 +258,6 @@ int main(void) {
 
   // Projets — une entrée = une page (projet.html?id=slug)
   projects: {
-    'optim-bdd': {
-      title: "Optimisation d'une base de données",
-      tagline: "Normalisation, dénormalisation, vues matérialisées..",
-      year: 'BUT2 · 2025 – 2026', domain: 'Bases de données',
-      stack: [], skills: ['sql'],
-      github:"https://github.com/Fares-bna/tpSql",
-      role: "Exécution de tout type de requêtes ",
-      summary: "Travaux pratiques mettant en avant le principe de normalisation, dénormalisation, créations de vues matérialisées, analyses de coût de requêtes. ",
-      points: ['[Modèle de données.]', '[Requêtes optimisées.]', '[Résultat obtenu.]'],
-    },
     'refonte-site': {
       title: "Refonte d'un site internet",
       tagline: "Refonte de la direction artistique d'un site web.",
@@ -277,15 +268,6 @@ int main(void) {
       images:['assets/img/refonte-avant.png', 'assets/img/refonte-apres.png'],
       points: ['Organisation pour la refonte', 'Coordination sur le style choisi', 'Qualité de la refonte'],
       
-    },
-    'jeu-memoire': {
-      title: 'Jeu de mémoire',
-      tagline: 'Jeu de mémoire en interface graphique (VB .NET).',
-      year: 'BUT1 · 2024 – 2025', domain: 'Interfaces machines',
-      stack: ['VB .NET Framework'], skills: ['vbnet'],
-      role: "Optimisation du code et supervision de l'organisation de l'équipe",
-      summary: "Création d'un jeu de mémoire avec interface graphique développée sous VB .NET Framework.",
-      points: ['[Interface.]', '[Logique du jeu.]', '[Difficulté surmontée.]'],
     },
     'projet-android': {
       title: "Développement d'applications mobiles",
