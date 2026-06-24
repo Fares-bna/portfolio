@@ -17,7 +17,7 @@ window.DATA = {
     objective: "À la recherche d'une alternance pour le BUT 3",
     photo: 'assets/img/profil.png',
     cv: 'assets/CV-Fares-BENNANI.pdf',
-    intro: "La curiosité est sans doute ce qui me décrit le mieux. J'ai besoin de comprendre comment les choses fonctionnent en profondeur, pas seulement de savoir m'en servir : quand un sujet m'accroche, je vais chercher plus loin, je teste par moi-même et je n'abandonne pas tant que je n'ai pas saisi la logique derrière.",
+    intro: `<a href="#softskillDetail" onclick="event.preventDefault();document.getElementById('softskillDetail').scrollIntoView({behavior:'smooth',block:'center'})" class="hero__inline-link">La curiosité</a> est sans doute ce qui me décrit le mieux. J'ai besoin de comprendre comment les choses fonctionnent en profondeur, pas seulement de savoir m'en servir : quand un sujet m'accroche, je vais chercher plus loin, je teste par moi-même et je n'abandonne pas tant que je n'ai pas saisi la logique derrière.`,
   },
 
   // Navigation (ancre -> libellé)

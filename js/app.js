@@ -79,7 +79,7 @@
         <span class="hero__status reveal">${esc(s.status || s.lede)}</span>
         <h1 class="hero__title reveal">${esc(s.name)}</h1>
         <p class="hero__accroche reveal">${esc(s.objective || s.tagline)}</p>
-        <p class="hero__lede reveal">${esc(s.intro || s.lede)}</p>
+        <p class="hero__lede reveal">${s.intro || esc(s.lede)}</p>
         <div class="hero__actions reveal">
           <a href="#competences" class="btn btn--primary">Mes compétences</a>
           ${s.cv ? `<a href="${esc(s.cv)}" class="btn btn--ghost" download>Télécharger mon CV ↓</a>` : ''}
@@ -159,8 +159,8 @@
     const chips = D.skills.soft.map((s) => `<button class="chip softskill-btn${s.id === (defaultQ && defaultQ.id) ? ' is-active' : ''}" data-id="${esc(s.id)}">${esc(s.name)}</button>`).join('');
     return `<section class="section section--alt" id="technologies"><div class="container">
       ${sectionHead('Technologies', 'Technologies &amp; langages', '')}
-      <div class="skills">${cards}</div>
-      <div class="softskills"><span class="softskills__label">Savoir-être</span>${chips}</div>
+      <div class="skills" id="skills-list">${cards}</div>
+      <div class="softskills" id="savoir-etre"><span class="softskills__label">Savoir-être</span>${chips}</div>
       <div class="softskill-detail" id="softskillDetail">
         <p class="prose softskill-detail__text" id="softskillText">${defaultQ ? esc(defaultQ.text) : ''}</p>
       </div>
