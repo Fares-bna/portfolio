@@ -199,7 +199,7 @@
           <div class="refcard__actions"><a href="sae.html?id=s3-01">Voir la SAÉ →</a></div>
         </div>
       </div>
-      <p class="prose reveal">Disponible pour un stage ou une alternance : <a href="mailto:${esc(s.email)}">${esc(s.email)}</a>.</p>
+      <p class="prose reveal">Disponible pour un stage de 14 à 16 semaines à partir du 8 mars 2027 : <a href="mailto:${esc(s.email)}">${esc(s.email)}</a>.</p>
     </div></section>`;
   }
 

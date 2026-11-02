@@ -14,7 +14,7 @@ window.DATA = {
     linkedin: 'https://www.linkedin.com/in/fares-bennani-862398319/',
     github: 'https://github.com/Fares-bna',
     status: 'Étudiant en 3ᵉ année de BUT Informatique',
-    objective: "À la recherche d'un stage ou d'une alternance en développement d'applications",
+    objective: "À la recherche d'un stage de 14 à 16 semaines, à partir du 8 mars 2027",
     photo: 'assets/img/profil.png',
     cv: 'assets/CV-Fares-BENNANI.pdf',
     intro: `<a href="#softskillDetail" onclick="event.preventDefault();document.getElementById('softskillDetail').scrollIntoView({behavior:'smooth',block:'center'})" class="hero__inline-link">La curiosité</a> est sans doute ce qui me décrit le mieux. J'ai besoin de comprendre comment les choses fonctionnent en profondeur, pas seulement de savoir m'en servir : quand un sujet m'accroche, je vais chercher plus loin, je teste par moi-même et je n'abandonne pas tant que je n'ai pas saisi la logique derrière.`,
