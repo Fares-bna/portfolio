@@ -8,13 +8,13 @@ window.DATA = {
     name: 'Fares BENNANI',
     role: 'BUT Informatique',
     tagline: 'Étudiant en informatique',
-    lede: "Deuxième année de BUT, Parcours réalisation d'applications",
-    year: '2025 – 2026',
+    lede: "Troisième année de BUT, Parcours réalisation d'applications",
+    year: '2026 – 2027',
     email: 'fares.bennani29@gmail.com',
     linkedin: 'https://www.linkedin.com/in/fares-bennani-862398319/',
     github: 'https://github.com/Fares-bna',
-    status: 'Étudiant en 2ᵉ année de BUT Informatique',
-    objective: "À la recherche d'une alternance pour le BUT 3",
+    status: 'Étudiant en 3ᵉ année de BUT Informatique',
+    objective: "À la recherche d'un stage ou d'une alternance en développement d'applications",
     photo: 'assets/img/profil.png',
     cv: 'assets/CV-Fares-BENNANI.pdf',
     intro: `<a href="#softskillDetail" onclick="event.preventDefault();document.getElementById('softskillDetail').scrollIntoView({behavior:'smooth',block:'center'})" class="hero__inline-link">La curiosité</a> est sans doute ce qui me décrit le mieux. J'ai besoin de comprendre comment les choses fonctionnent en profondeur, pas seulement de savoir m'en servir : quand un sujet m'accroche, je vais chercher plus loin, je teste par moi-même et je n'abandonne pas tant que je n'ai pas saisi la logique derrière.`,
@@ -34,8 +34,18 @@ window.DATA = {
       text: 'Spécialités Mathématiques et Physique-Chimie, au Lycée privé La Salle Saint-Rosaire (95)' },
     { year: '2024 – 2025', title: 'BUT 1 Informatique, IUT de Paris Rives de Seine',
       text: 'Université Paris Cité' },
-    { year: '2025 – 2026', title: 'BUT 2 Informatique, IUT de Villetaneuse', now: true,
+    { year: '2025 – 2026', title: 'BUT 2 Informatique, IUT de Villetaneuse',
       text: 'Université Sorbonne Paris Nord' },
+    { year: '2026 – 2027', title: 'BUT 3 Informatique, IUT de Villetaneuse', now: true,
+      text: 'Université Sorbonne Paris Nord' },
+  ],
+
+  // Expériences professionnelles (les plus récentes en premier)
+  experiences: [
+    { tag: 'Depuis septembre 2026', title: 'Développeur · Tiramigo',
+      desc: "Application de logistique en production pour un service de livraison de tiramisu en Île-de-France : commandes Shopify, gestion du stock, calcul des tournées, feuilles de route des livreurs, suivi des clients et des paiements (TypeScript, Node.js). Développement et maintenance." },
+    { tag: 'Juin – Août 2026', title: 'Stage de développement · Groupe Al Omrane (Rabat-Salé-Kénitra)',
+      desc: "Conception d'une application de gestion interne : réservation des salles, consommables de bureau et régies de dépense." },
   ],
 
   // Pourquoi l'informatique (voix de Fares)
@@ -55,7 +65,7 @@ window.DATA = {
   // Projet professionnel — compléments (compétences à développer + objectifs)
   projetPlus: {
     developper: `Je veux d'abord renforcer l'<a href="competence.html?id=administrer">administration système</a> et le déploiement : Linux, conteneurs Docker et intégration continue. C'est le domaine où je suis le moins à l'aise aujourd'hui, et c'est aussi celui qui sépare un programme qui tourne sur ma machine d'une application réellement livrée. Je souhaite ensuite progresser en <a href="competence.html?id=conduire">conduite de projet</a>, en particulier sur l'estimation des délais et les méthodes agiles, que je n'ai pour l'instant éprouvées que sur des projets courts. Enfin, je veux apprendre à concevoir des architectures plus solides, pour penser la structure d'une application avant d'écrire la première ligne plutôt que de la corriger en cours de route.`,
-    objectifs: `Mon objectif immédiat est de décrocher une alternance dès le BUT 3, pour confronter mes compétences à un vrai cadre professionnel et apprendre au contact d'une équipe expérimentée. À plus long terme, je veux poursuivre vers un diplôme d'ingénieur en informatique, puis devenir capable de mener une application de bout en bout et de tenir un rôle technique de référence. Chaque compétence que je travaille aujourd'hui — <a href="competence.html?id=realiser">réaliser</a>, <a href="competence.html?id=optimiser">optimiser</a>, <a href="competence.html?id=gerer">gérer</a> — est une marche de plus vers ce métier.`,
+    objectifs: `Mon objectif immédiat est de décrocher un stage ou une alternance, pour confronter mes compétences à un vrai cadre professionnel et apprendre au contact d'une équipe expérimentée. À plus long terme, je veux poursuivre vers un diplôme d'ingénieur en informatique, puis devenir capable de mener une application de bout en bout et de tenir un rôle technique de référence. Chaque compétence que je travaille aujourd'hui — <a href="competence.html?id=realiser">réaliser</a>, <a href="competence.html?id=optimiser">optimiser</a>, <a href="competence.html?id=gerer">gérer</a> — est une marche de plus vers ce métier.`,
   },
 
   // Les 6 compétences officielles du BUT Informatique (structure principale).
@@ -136,9 +146,9 @@ window.DATA = {
     },
   ],
 
-  // Compétences. before = niveau BUT1 (null = pas pratiqué l'an dernier), now = niveau actuel.
+  // Compétences. before = niveau BUT2 (null = pas pratiqué l'an dernier), now = niveau actuel (BUT3).
   skills: {
-    years: { before: 'BUT 1', now: 'BUT 2' },
+    years: { before: 'BUT 2', now: 'BUT 3' },
     hard: [
       {
         id: 'c', name: 'C', before: 60, now: 60, projects: [], saes: ['s1-01', 's1-02'],
@@ -149,7 +159,7 @@ window.DATA = {
         ],
       },
       {
-        id: 'sql', name: 'SQL & bases de données', before: 60, now: 76, projects: [],
+        id: 'sql', name: 'SQL & bases de données', before: 76, now: 80, projects: [],
         github: 'https://github.com/Fares-bna/tpSql',
         proof: "Compétence attestée par mes SAÉ contenant des bases de données ainsi que les travaux pratiques de SQL (dépôt tpSql à l'appui) : jointures, sous-requêtes, agrégation, vues matérialisées et types composites PostgreSQL.",
       
@@ -159,7 +169,7 @@ window.DATA = {
         ],
       },
       {
-        id: 'js', name: 'JavaScript', before: null, now: 60, projects: ['projet-js'],
+        id: 'js', name: 'JavaScript', before: 60, now: 70, projects: ['projet-js'],
         proof: "Compétence développée avec la SAÉ S4.01, développée en PHP",
       
         story: [
@@ -168,7 +178,7 @@ window.DATA = {
         ],
       },
       {
-        id: 'android', name: 'Développement Android', before: null, now: 78, projects: ['projet-android'],
+        id: 'android', name: 'Développement Android', before: 78, now: 82, projects: ['projet-android'],
         proof: "Compétence démontrée par le développement d'une application mobile Android (dépôt ci-dessous).",
         story: [
           "Le développement Android est une découverte de la deuxième année. Les différents TP proposés en cours nous poussaient petit à petit jusqu'à nous faire développer une application toute entière en autonomie",
@@ -176,7 +186,7 @@ window.DATA = {
         ],
       },
       {
-        id: 'progsys', name: 'Programmation système', before: 80, now: 85, projects: [],
+        id: 'progsys', name: 'Programmation système', before: 85, now: 85, projects: [],
         proof: "Compétence acquise et maîtrisée dès la première année, mobilisée dans de nombreux contextes : gestion de fichiers et de flux en C, manipulation fine de la mémoire et des pointeurs, création et synchronisation de processus, et lecture bas niveau des entrées/sorties via les appels système.",
         code:
 `/* Lecture d'un fichier caractère par caractère, en C */
@@ -199,7 +209,7 @@ int main(void) {
         ],
       },
       {
-        id: 'java', name: 'Java', before: 72, now: 72, projects: [], saes: ['s2-02'],
+        id: 'java', name: 'Java', before: 72, now: 76, projects: [], saes: ['s2-02'],
         proof: "Compétence attestée par la SAÉ d'exploration algorithmique en Java (S2.02 : labyrinthe et plus court chemin), dépôt à l'appui.",
         story: [
           "J'ai surtout travaillé le Java en BUT1, en algorithmique. Le projet qui m'a le plus marqué est un jeu de labyrinthe où il fallait calculer le plus court chemin avec l'algorithme de Dijkstra.",
@@ -207,7 +217,7 @@ int main(void) {
         ],
       },
       {
-        id: 'python', name: 'Python (Flask)', before: null, now: 42, projects: ['refonte-site'],
+        id: 'python', name: 'Python (Flask)', before: 42, now: 42, projects: ['refonte-site'],
         proof: "Compétence mise en pratique avec Flask sur la partie serveur d'un projet web (ci-dessous).",
         story: [
           "J'ai abordé Python cette année, surtout à travers le framework Flask pour le web. C'est un langage que je trouve agréable parce qu'il va droit au but.",
@@ -215,7 +225,7 @@ int main(void) {
         ],
       },
       {
-        id: 'web', name: 'HTML / CSS', before: 70, now: 85, projects: ['refonte-site'],
+        id: 'web', name: 'HTML / CSS', before: 85, now: 88, projects: ['refonte-site'],
         proof: "Compétence directement visible : ce portfolio et la refonte d'un site en sont la preuve.",
         story: [
           "Le HTML et le CSS m'accompagnent depuis la BUT1. C'est ce qui me permet de soigner l'aspect d'un projet, et pas seulement son fonctionnement.",
@@ -231,12 +241,29 @@ int main(void) {
         ],
       },
       {
-        id: 'php', name: 'PHP', before: null, now: 30, projects: [],
+        id: 'php', name: 'PHP', before: 30, now: 30, projects: [],
         proof: "Compétence apprise à l'aide de la SAE S4.01",
         story: [
           "PHP est une découverte de cette année, et ce portfolio en a été le premier vrai terrain : avant de le rendre statique, je l'avais entièrement construit en PHP.",
           "J'y ai mis en place une vraie organisation : un fichier de données central, des composants réutilisables et des pages générées automatiquement. C'est ce qui m'a fait comprendre l'intérêt de structurer un projet plutôt que d'empiler du code.",
         ],
+      },
+      {
+        id: 'typescript', name: 'TypeScript', before: null, now: 50, projects: [],
+        proof: "Compétence mise en pratique sur l'application de logistique de Tiramigo, en production depuis septembre 2026.",
+      },
+      {
+        id: 'node', name: 'Node.js / Express', before: 35, now: 62, projects: ['projet-js'],
+        proof: "Compétence mise en pratique sur le back-end de l'application développée pendant mon stage chez Groupe Al Omrane, puis sur l'application de Tiramigo. Premiers pas avec Express.js lors des TP JavaScript.",
+      },
+      {
+        id: 'springboot', name: 'Spring Boot', before: 35, now: 35, projects: ['tp-qualite'],
+        github: 'https://github.com/Fares-bna/tpLogiciel',
+        proof: "Compétence travaillée lors du TP Qualité de développement : tests d'intégration et de non-régression sur une application Spring Boot.",
+      },
+      {
+        id: 'docker', name: 'Docker', before: 40, now: 40, projects: [], saes: ['s3-01', 's4-01'],
+        proof: "Compétence mise en pratique sur la conteneurisation et le déploiement de l'application Colis (S3.01), puis sur sa reprise (S4.01).",
       },
     ],
     // Savoir-être — pages laissées à remplir par Fares (qualite.html?id=...)
@@ -284,13 +311,21 @@ int main(void) {
       title: 'TP JavaScript',
       tagline: "Travaux pratiques JavaScript : DOM, événements et logique côté client.",
       year: 'BUT2 · 2025 – 2026', domain: 'Développement web',
-      stack: [], skills: ['js', 'web'],
+      stack: [], skills: ['js', 'web', 'node'],
       github: 'https://github.com/Fares-bna/tpJavascript',
       role: "Développement d'une application Express.js permettant le rencensement et la modification de profil en ligne, développement d'une application SPA en Vue.js reprenant le jeu Puissance 4",
       summary: "Ensemble de travaux pratiques en JavaScript : manipulation du DOM, gestion d'événements et petites applications interactives côté client.",
       images:["assets/img/express-js.png", "assets/img/vue-js.png"],
       
       points: ['[Point clé.]', '[Point clé.]', '[Point clé.]'],
+    },
+    'tp-qualite': {
+      title: 'TP Qualité de développement',
+      tagline: "Tests d'intégration et de non-régression sur Spring Boot.",
+      year: 'BUT2 · 2025 – 2026', domain: 'Qualité logicielle',
+      stack: [], skills: ['java', 'springboot'],
+      github: 'https://github.com/Fares-bna/tpLogiciel',
+      summary: "Écriture de tests d'intégration au fur et à mesure que de nouveaux composants sont ajoutés à une application Spring Boot, en vérifiant que les tests précédents continuent de passer (tests de non-régression).",
     },
   },
 
@@ -568,7 +603,7 @@ int main(void) {
     but2: [
       { id: 'S3.01', slug: 's3-01', title: "Développement d'une application",
         summary: "Application de suivi de colis pour le service reprographie de l'IUT de Villetaneuse, du bon de commande à la livraison finale.",
-        skills: ['python', 'web', 'sql'],
+        skills: ['python', 'web', 'sql', 'docker'],
         competences: ['realiser', 'gerer', 'collaborer', 'administrer', 'conduire'],
         github: 'https://github.com/Fares-bna/S3.01_SAE-Colis',
         objectifs: "Centraliser le suivi des colis du service reprographie de l'IUT, du bon de commande à la livraison finale, afin de réduire les erreurs de distribution, les délais et la saisie manuelle.",
@@ -605,7 +640,7 @@ int main(void) {
       { id: 'S4.01', slug: 's4-01', title: "Développement d'une application complexe",
         summary: "Suite du projet Colis (S3.01) : reprise par un nouveau groupe, correction des bugs et améliorations ciblées.",
         github: 'https://github.com/My19a/Suite_Projet_Colis',
-        skills: ['php', 'web', 'sql'],
+        skills: ['php', 'web', 'sql', 'docker'],
         competences: ['realiser', 'collaborer', 'administrer'],
         objectifs: "Reprendre l'application Colis développée en S3.01, en analyser le code existant, en corriger les bugs et les incohérences, et l'améliorer selon les retours du commanditaire.",
         recit: "La SAÉ S4.01 est la continuité directe du projet S3.01 : un nouveau groupe récupère le code, doit le maîtriser, corriger les problèmes signalés et apporter des améliorations ciblées. Le défi est autant technique — reprendre un code qu'on n'a pas écrit — qu'organisationnel.",

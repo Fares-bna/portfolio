@@ -177,24 +177,29 @@
         <span class="comp__cue">Voir les preuves →</span>
       </a>`).join('');
     return `<section class="section" id="competences"><div class="container">
-      ${sectionHead('Compétences', 'Mes 6 compétences', 'Les six compétences du BUT Informatique, chacune appuyée par des preuves concrètes — SAÉ, projets, dépôts — et une analyse réflexive.')}
+      ${sectionHead('Compétences', 'Mes 6 compétences', 'Les six compétences du BUT Informatique, chacune appuyée par des preuves concrètes (SAÉ, projets, dépôts) et une analyse réflexive.')}
       <div class="comps">${cards}</div>
     </div></section>`;
   }
 
   function experiencesHTML() {
     const s = D.site;
+    const exps = (D.experiences || []).map((x) => `
+        <div class="refcard reveal"><span class="sae-card__id">${esc(x.tag)}</span>
+          <h3 class="refcard__title">${esc(x.title)}</h3>
+          <p class="refcard__desc">${esc(x.desc)}</p>
+        </div>`).join('');
     return `<section class="section section--alt" id="experiences"><div class="container container--narrow">
       ${sectionHead('Expériences', 'Expériences professionnelles', '')}
-      <p class="prose reveal">Je n'ai pas encore réalisé de stage ni d'alternance : c'est précisément ce que je recherche pour le BUT 3. Mon expérience la plus proche du monde professionnel reste la SAÉ Colis (S3.01), menée pour un vrai commanditaire — le service reprographie de l'IUT — avec un cahier des charges, une équipe et une livraison attendue.</p>
       <div class="reflist reflist--one">
+        ${exps}
         <div class="refcard reveal"><span class="sae-card__id">Projet commandité</span>
-          <h3 class="refcard__title">Application de suivi de colis — IUT de Villetaneuse</h3>
+          <h3 class="refcard__title">Application de suivi de colis · IUT de Villetaneuse</h3>
           <p class="refcard__desc">Commanditaire réel, équipe de cinq, cahier des charges et déploiement. Mon rôle : front-end et conception responsive.</p>
           <div class="refcard__actions"><a href="sae.html?id=s3-01">Voir la SAÉ →</a></div>
         </div>
       </div>
-      <p class="prose reveal">Disponible pour une alternance — <a href="mailto:${esc(s.email)}">${esc(s.email)}</a>.</p>
+      <p class="prose reveal">Disponible pour un stage ou une alternance : <a href="mailto:${esc(s.email)}">${esc(s.email)}</a>.</p>
     </div></section>`;
   }
 
