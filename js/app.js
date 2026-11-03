@@ -1,13 +1,14 @@
 /* ============================================================
-   Rendu du portfolio (statique, sans dépendance).
+   Rendu du portfolio — version terminal (statique, sans dépendance).
    Une seule source de données : js/data.js (window.DATA).
+   Chaque partie du portfolio est une commande : on la tape, on clique
+   sur une entrée « > » ou on la compose sur le clavier fictif.
    ============================================================ */
 (function () {
   const D = window.DATA;
-  const page = document.body.dataset.page;
-  const onHome = page === 'home';
-  const base = onHome ? '' : 'index.html'; // préfixe des ancres hors accueil
+  const page = document.body.dataset.page || 'home';
   const params = new URLSearchParams(location.search);
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------- utilitaires ---------- */
   const esc = (s) =>
@@ -15,6 +16,12 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   const el = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* stockage indisponible */ } },
+  };
+  const isPhone = () => window.matchMedia('(max-width: 760px)').matches;
 
   function skillLevel(n) {
     if (n >= 78) return 'Maîtrisé';
@@ -22,516 +29,774 @@
     if (n >= 45) return 'Intermédiaire';
     return 'Initiation';
   }
-
-  // Échelle qualitative des 6 compétences (sur 4)
   const COMP_LEVELS = ['—', 'Initiation', 'Intermédiaire', 'Maîtrise', 'Expertise'];
-  const compLevelLabel = (n) => COMP_LEVELS[n] || '—';
-  function compDots(n) {
-    let s = '';
-    for (let i = 1; i <= 4; i++) s += `<span class="dot${i <= n ? ' dot--on' : ''}"></span>`;
-    return `<span class="dots" role="img" aria-label="Niveau ${n} sur 4">${s}</span>`;
+  const dots4 = (n) => `<span class="dots4" aria-label="Niveau ${n} sur 4">${'●'.repeat(n)}<span class="off">${'●'.repeat(4 - n)}</span></span>`;
+
+  /* ---------- index des données ---------- */
+  const SAE = [
+    ...D.sae.but1.map((s) => ({ ...s, promo: 'BUT 1' })),
+    ...D.sae.but2.map((s) => ({ ...s, promo: 'BUT 2' })),
+  ];
+  const COMPS = D.competences || [];
+  const HARD = D.skills.hard;
+  const SOFT = D.skills.soft;
+  const PROJ = D.projects;
+  const EXP = D.experiences || [];
+  const compName = (id) => (COMPS.find((c) => c.id === id) || {}).name || id;
+  const hardName = (id) => (HARD.find((s) => s.id === id) || {}).name || id;
+  const [firstName, ...lastName] = D.site.name.split(' ');
+
+  /* liens internes du texte (data.js) -> commandes */
+  function linkify(html) {
+    return String(html || '')
+      .replace(/\sonclick="[^"]*"/g, '')
+      .replace(/href="competence\.html\?id=([\w-]+)"/g, 'href="#competence-$1" data-cmd="competence $1"')
+      .replace(/href="#softskillDetail"/g, 'href="#qualites-curiosite" data-cmd="qualites curiosite"');
   }
 
-  /* ---------- nav + footer (communs) ---------- */
-  function navHTML() {
-    const links = Object.entries(D.nav)
-      .map(([a, l]) => `<a href="${base}#${a}">${esc(l)}</a>`).join('');
-    const [first, ...rest] = D.site.name.split(' ');
-    const cv = D.site.cv;
-    return `
-      <div class="nav__inner">
-        <a href="${base || '#accueil'}" class="nav__brand">${esc(first)} <b>${esc(rest.join(' '))}</b></a>
-        <div class="nav__right">
-          <nav class="nav__links" id="navLinks">${links}</nav>
-          ${cv ? `<a href="${esc(cv)}" class="nav__cv" download>CV ↓</a>` : ''}
-          <button class="nav__toggle" id="navToggle" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
-        </div>
-      </div>`;
+  /* petits morceaux de sortie */
+  const run = (cmd, label) => `<button class="run" data-cmd="${esc(cmd)}">${esc(label || cmd)}</button>`;
+  const chip = (cmd, label, main) => `<button class="chip${main ? ' chip--main' : ''}" data-cmd="${esc(cmd)}">${esc(label || cmd)}</button>`;
+  const ext = (href, label) => `<a class="chip chip--link" href="${esc(href)}" target="_blank" rel="noopener">${esc(label)}</a>`;
+  const dl = (href, label, main) => `<a class="chip chip--dl${main ? ' chip--main' : ''}" href="${esc(href)}" download target="_blank" rel="noopener">${esc(label)}</a>`;
+  const h = (t) => `<p class="h">${t}</p>`;
+  const h3 = (t) => `<p class="h3">${t}</p>`;
+  const p = (t) => `<p class="p">${t}</p>`;
+
+  function gauge(before, now, cells) {
+    const n = cells || 24;
+    const full = Math.round((now / 100) * n);
+    const prev = before == null ? 0 : Math.min(full, Math.round((before / 100) * n));
+    return `<span class="gauge" aria-hidden="true"><span class="g-prev">${'█'.repeat(prev)}</span><span class="g-new">${'█'.repeat(full - prev)}</span><span class="g-empty">${'░'.repeat(n - full)}</span></span>`;
+  }
+  function shortHash(str) {
+    let x = 5381;
+    for (const c of str) x = ((x << 5) + x + c.charCodeAt(0)) >>> 0;
+    return x.toString(16).padStart(7, '0').slice(0, 7);
   }
 
-  function footerHTML() {
-    const s = D.site;
-    const gh = s.github ? `<a href="${esc(s.github)}" target="_blank" rel="noopener">GitHub</a>` : '';
-    return `
-      <div class="container">
-        <p class="footer__name">${esc(s.name)}</p>
-        <p class="footer__meta">Portfolio ${esc(s.role)} · ${esc(s.year)}</p>
-        <div class="footer__links">
-          <a href="mailto:${esc(s.email)}">Email</a>
-          ${gh}
-          <a href="${esc(s.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>
-        </div>
-      </div>`;
-  }
+  /* ============================================================
+     COMMANDES
+     ============================================================ */
+  const yr = D.skills.years;
 
-  /* ---------- accueil ---------- */
-  function sectionHead(label, title, intro) {
-    return `<header class="section__head reveal">
-      <h2 class="section__title">${title}</h2>
-      ${intro ? `<p class="section__intro">${intro}</p>` : ''}
-    </header>`;
-  }
-
-  function heroHTML() {
-    const s = D.site;
-    return `<section class="hero" id="accueil"><div class="container hero__grid">
-      <div class="hero__text">
-        <span class="hero__status reveal">${esc(s.status || s.lede)}</span>
-        <h1 class="hero__title reveal">${esc(s.name)}</h1>
-        <p class="hero__accroche reveal">${esc(s.objective || s.tagline)}</p>
-        <p class="hero__lede reveal">${s.intro || esc(s.lede)}</p>
-        <div class="hero__actions reveal">
-          <a href="#competences" class="btn btn--primary">Mes compétences</a>
-          ${s.cv ? `<a href="${esc(s.cv)}" class="btn btn--ghost" download>Télécharger mon CV ↓</a>` : ''}
-        </div>
-        <div class="hero__contacts reveal">
-          <a href="mailto:${esc(s.email)}">${esc(s.email)}</a>
-          <a href="${esc(s.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>
-          <a href="${esc(s.github)}" target="_blank" rel="noopener">GitHub</a>
-        </div>
+  function cmdWhoami() {
+    const cur = D.parcours[D.parcours.length - 1];
+    const job = EXP[0];
+    const photo = D.site.photo ? `
+        <figure class="avatar">
+          <figcaption class="shot__bar">$ cat ${esc(D.site.photo.split('/').pop())}</figcaption>
+          <canvas class="avatar__px" aria-hidden="true"></canvas>
+          <img class="avatar__img" src="${esc(D.site.photo)}" alt="Photo de ${esc(D.site.name)}" />
+        </figure>` : '';
+    return `<div class="who">
+      <div class="who__main">
+      <div class="banner">
+        <div class="banner__name">${esc(firstName)} <span>${esc(lastName.join(' '))}</span><span class="cursor-blink" aria-hidden="true"></span></div>
+        <div class="banner__rule" aria-hidden="true">${'─'.repeat(120)}</div>
       </div>
-    </div></section>`;
+      <dl class="kv">
+        <dt>statut</dt><dd>${esc(D.site.status)}</dd>
+        <dt>formation</dt><dd>${esc(cur.title)} · ${esc(cur.text)}</dd>
+        ${job ? `<dt>en ce moment</dt><dd>${esc(job.title)} <span class="muted">(${esc(job.tag.toLowerCase())})</span></dd>` : ''}
+        <dt>recherche</dt><dd class="acc2">${esc(D.site.objective)}</dd>
+      </dl>
+      </div>${photo}
+      </div>
+      <div class="gap"></div>
+      ${p(linkify(D.site.intro))}
+      <div class="chips">
+        ${D.site.cv ? dl(D.site.cv, 'Télécharger mon CV', true) : ''}
+        ${chip('experience', 'experience')}
+        ${chip('stack', 'stack')}
+        ${chip('contact', 'contact')}
+      </div>`;
   }
 
-  function parcoursHTML() {
-    const items = D.parcours.map((p) => `
-      <div class="timeline__item reveal">
-        <span class="timeline__year${p.now ? ' timeline__year--now' : ''}">${esc(p.year)}</span>
-        <div class="timeline__body">
-          <h3>${esc(p.title)}</h3>
-          <p>${esc(p.text)}</p>
+  function cmdCompetences(arg) {
+    if (arg) return compDetail(arg);
+    const rows = COMPS.map((c) => `
+      <button class="row" style="--c1:12ch" data-cmd="competences ${esc(c.id)}">
+        <span class="row__id">${esc(c.name)}</span>
+        <span class="row__t">${esc(c.full)}<span class="row__d">${esc(c.short)}</span></span>
+        <span class="row__x">${dots4(c.now)} ${esc(COMP_LEVELS[c.now])}</span>
+      </button>`).join('');
+    return `${h('Mes 6 compétences')}
+      ${p('Les six compétences du BUT Informatique, chacune appuyée par des preuves concrètes (SAÉ, projets, dépôts) et une analyse réflexive. Clique sur une ligne pour voir les preuves.')}
+      <div class="gap"></div><div class="rows">${rows}</div>`;
+  }
+
+  function compDetail(id) {
+    const c = COMPS.find((x) => x.id === id);
+    if (!c) {
+      if (HARD.find((x) => x.id === id)) return stackDetail(id);
+      return notFound(`compétence « ${id} » introuvable`, 'competences');
+    }
+    const saes = SAE.filter((s) => (c.saes || []).includes(s.slug));
+    const projs = (c.projects || []).filter((k) => PROJ[k]);
+    const langs = (c.langs || []).filter((k) => HARD.find((x) => x.id === k));
+    return `${h(`${esc(c.name)} <span class="muted">·</span> ${dots4(c.now)} <span class="ink">${esc(COMP_LEVELS[c.now])}</span>`)}
+      ${p(`<b>${esc(c.full)}</b>`)}${p(esc(c.short))}
+      ${c.appris ? h3("Ce que j'ai appris") + p(esc(c.appris)) : ''}
+      ${c.prouver ? h3('Comment je le prouve') + p(esc(c.prouver)) : ''}
+      ${c.ameliorer ? h3("Ce qu'il me reste à améliorer") + p(esc(c.ameliorer)) : ''}
+      ${saes.length || projs.length ? h3('Preuves') : ''}
+      ${saes.length ? `<div class="rows">${saes.map(saeRow).join('')}</div>` : ''}
+      ${projs.length ? `<div class="rows">${projs.map(projRow).join('')}</div>` : ''}
+      ${langs.length ? `${h3('Langages mobilisés')}<div class="chips">${langs.map((k) => chip(`stack ${k}`, hardName(k))).join('')}</div>` : ''}`;
+  }
+
+  function cmdStack(arg) {
+    if (arg) return stackDetail(arg);
+    const list = [...HARD].sort((a, b) => b.now - a.now);
+    const rows = list.map((s) => {
+      const lvl = skillLevel(s.now);
+      const was = s.before == null ? `<span class="acc2">nouveau</span>` : `${esc(yr.before)} ${s.before}%`;
+      return `<button class="brow" data-cmd="stack ${esc(s.id)}">
+        <span class="brow__n">${esc(s.name)}</span>
+        ${gauge(s.before, s.now)}
+        <span class="brow__v"><b>${s.now}%</b> <span class="${lvl === 'Maîtrisé' ? 'lvl-master' : ''}">${esc(lvl)}</span> · ${was}</span>
+      </button>`;
+    }).join('');
+    return `${h('Technologies &amp; langages')}
+      ${p(`Niveau actuel (${esc(yr.now)}) comparé à l'an dernier (${esc(yr.before)}). Clique sur une ligne pour voir la preuve.`)}
+      <div class="gap"></div><div class="bars">${rows}</div>
+      <div class="legend"><span><span class="g-prev">██</span> niveau ${esc(yr.before)}</span><span><span class="g-new">██</span> progression ${esc(yr.now)}</span></div>`;
+  }
+
+  function stackDetail(id) {
+    const s = HARD.find((x) => x.id === id);
+    if (!s) return notFound(`techno « ${id} » introuvable`, 'stack');
+    const saes = SAE.filter((x) => (x.skills || []).includes(id) || (s.saes || []).includes(x.slug));
+    const projs = Object.keys(PROJ).filter((k) => (PROJ[k].skills || []).includes(id) || (s.projects || []).includes(k));
+    const comps = COMPS.filter((c) => (c.langs || []).includes(id));
+    return `${h(esc(s.name))}
+      <div class="bars"><div class="brow" style="cursor:default">
+        <span class="brow__n muted">${s.before == null ? `nouveau en ${esc(yr.now)}` : `${esc(yr.before)} ${s.before}% → ${esc(yr.now)}`}</span>
+        ${gauge(s.before, s.now)}
+        <span class="brow__v"><b>${s.now}%</b> ${esc(skillLevel(s.now))}</span>
+      </div></div>
+      ${s.proof ? `<div class="gap"></div>${p(esc(s.proof))}` : ''}
+      ${s.code ? `${h3('Extrait de code')}<pre class="code"><code>${esc(s.code)}</code></pre>` : ''}
+      ${saes.length || projs.length ? h3('Projets liés') : ''}
+      ${saes.length ? `<div class="rows">${saes.map(saeRow).join('')}</div>` : ''}
+      ${projs.length ? `<div class="rows">${projs.map(projRow).join('')}</div>` : ''}
+      ${comps.length ? `${h3('Compétences du BUT')}<div class="chips">${comps.map((c) => chip(`competences ${c.id}`, c.name)).join('')}</div>` : ''}
+      ${s.github ? `<div class="chips">${ext(s.github, 'Voir le dépôt GitHub')}</div>` : ''}`;
+  }
+
+  function cmdQualites(arg) {
+    if (arg) {
+      const q = SOFT.find((x) => x.id === arg);
+      if (!q) return notFound(`qualité « ${arg} » introuvable`, 'qualites');
+      return `${h(esc(q.name))}${h3("Pourquoi je m'attribue cette qualité")}${p(esc(q.text))}
+        <div class="chips">${SOFT.filter((x) => x.id !== q.id).map((x) => chip(`qualites ${x.id}`, x.name)).join('')}</div>`;
+    }
+    return `${h('Savoir-être')}
+      <div class="rows">${SOFT.map((q) => `
+        <button class="row" style="--c1:20ch" data-cmd="qualites ${esc(q.id)}">
+          <span class="row__id">${esc(q.name)}</span>
+          <span class="row__t"><span class="row__d" style="margin:0">${esc(q.text)}</span></span>
+          <span class="row__x"></span>
+        </button>`).join('')}</div>`;
+  }
+
+  function cmdExperience() {
+    const items = EXP.map((x, i) => ({
+      head: shortHash(x.title), ref: i === 0 ? '(HEAD -> en cours)' : '',
+      title: x.title, date: x.tag, msg: esc(x.desc), extra: '',
+    }));
+    const colis = SAE.find((s) => s.slug === 's3-01');
+    if (colis) {
+      items.push({
+        head: shortHash(colis.title), ref: '', title: 'Projet commandité · Application de suivi de colis, IUT de Villetaneuse',
+        date: 'SAÉ S3.01', msg: 'Commanditaire réel, équipe de cinq, cahier des charges et déploiement. Mon rôle : front-end et conception responsive.',
+        extra: `<div class="chips">${chip('sae s3-01', 'sae s3-01')}</div>`,
+      });
+    }
+    const log = items.map((c) => `
+      <div class="commit">
+        <span class="commit__graph">*</span>
+        <div>
+          <div class="commit__head">commit ${c.head} <span class="ref">${c.ref}</span></div>
+          <div class="commit__title">${esc(c.title)}</div>
+          <div class="commit__date">Date : ${esc(c.date)}</div>
+          <div class="commit__msg">${c.msg}</div>
+          ${c.extra}
         </div>
       </div>`).join('');
-    return `<section class="section" id="parcours"><div class="container">
-      ${sectionHead('Parcours', 'Mon parcours', "")}
-      <div class="timeline">${items}</div>
-    </div></section>`;
+    return `${h('Expériences professionnelles')}
+      <p class="muted small">$ git log --experiences</p><div class="gap"></div>
+      <div class="log">${log}</div>
+      <div class="gap"></div>
+      ${p(`Disponible pour un stage de 14 à 16 semaines à partir du 8 mars 2027 : <a href="mailto:${esc(D.site.email)}">${esc(D.site.email)}</a>.`)}`;
   }
 
-  function pourquoiHTML() {
-    const paras = D.pourquoi.map((p) => `<p class="prose reveal">${esc(p)}</p>`).join('');
-    return `<section class="section section--alt" id="pourquoi"><div class="container container--narrow">
-      ${sectionHead('Pourquoi', "Pourquoi l'informatique&nbsp;?")}
-      ${paras}
-    </div></section>`;
+  function cmdParcours() {
+    const items = [...D.parcours].reverse().map((x) => `
+      <div class="tl${x.now ? ' is-now' : ''}">
+        <span class="tl__y">${esc(x.year)}</span>
+        <span class="tl__m">${x.now ? '●' : '○'}</span>
+        <span class="tl__b"><span class="tl__t">${esc(x.title)}</span>${x.now ? ' <span class="ok small">en cours</span>' : ''}<span class="tl__d">${esc(x.text)}</span></span>
+      </div>`).join('');
+    return `${h('Mon parcours')}<div class="timeline">${items}</div>`;
   }
 
-  function orientationHTML() {
-    return `<section class="section" id="orientation"><div class="container">
-      ${sectionHead('Orientation', "Choix d'orientation &amp; ambitions")}
-      <div class="grid">
-        <article class="card reveal"><h3 class="card__title">Le choix du BUT Informatique</h3>
-          <p>Une formation professionnalisante qui fait alterner la théorie et la pratique, et qui colle à ma façon d'apprendre : comprendre, puis appliquer tout de suite sur des projets concrets.</p></article>
-        <article class="card reveal"><h3 class="card__title">Ambitions professionnelles</h3>
-          <p>Accumuler assez d'expérience et d'exigence dans mon travail pour finir par me lancer à mon compte et mener mes propres projets.</p></article>
-      </div>
-    </div></section>`;
+  function saeRow(s) {
+    return `<button class="row" style="--c1:7ch" data-cmd="sae ${esc(s.slug)}">
+      <span class="row__id">${esc(s.id)}</span>
+      <span class="row__t">${esc(s.title)}<span class="row__d">${esc(s.summary)}</span></span>
+      <span class="row__x">${s.github ? 'git ↗' : ''}</span>
+    </button>`;
+  }
+  function projRow(k) {
+    const pr = PROJ[k];
+    return `<button class="row" style="--c1:15ch" data-cmd="projets ${esc(k)}">
+      <span class="row__id">${esc(k)}/</span>
+      <span class="row__t">${esc(pr.title)}<span class="row__d">${esc(pr.tagline || pr.summary || '')}</span></span>
+      <span class="row__x">${pr.github ? 'git ↗' : ''}</span>
+    </button>`;
   }
 
-  function objectifsHTML() {
-    const pl = D.projetPlus || {};
-    return `<section class="section section--alt" id="objectifs"><div class="container container--narrow">
-      ${sectionHead('Objectifs', 'Compétences à développer', '')}
-      <p class="prose reveal">${pl.developper || ''}</p>
-      <h3 class="objectifs__sub reveal">Mes objectifs · BUT 3 et après</h3>
-      <p class="prose reveal">${pl.objectifs || ''}</p>
-    </div></section>`;
-  }
-
-  function competencesHTML() {
-    const hard = [...D.skills.hard].sort((a, b) => b.now - a.now);
-    const yr = D.skills.years;
-    const cards = hard.map((s) => {
-      const isNew = s.before == null;
-      const lvl = skillLevel(s.now);
-      const master = lvl === 'Maîtrisé';
-      const scale = isNew
-        ? `<span class="skill__pt skill__pt--new">Nouveau · ${esc(yr.now)}</span><span class="skill__pt">${s.now}%</span>`
-        : `<span class="skill__pt">${esc(yr.before)} · ${s.before}%</span><span class="skill__pt skill__pt--now">${esc(yr.now)} · ${s.now}%</span>`;
-      return `<a class="skill reveal" href="competence.html?id=${esc(s.id)}" style="--now:${s.now}%;--before:${s.before || 0}%;">
-        <span class="skill__head"><span class="skill__name">${esc(s.name)}</span><span class="skill__level${master ? ' skill__level--master' : ''}">${esc(lvl)}</span></span>
-        <span class="skill__track"><span class="skill__fill"></span>${isNew ? '' : '<span class="skill__before" aria-hidden="true"></span>'}</span>
-        <span class="skill__scale">${scale}</span>
-        <span class="skill__cue">Voir le détail →</span>
-      </a>`;
+  function cmdSae(arg) {
+    if (arg) return saeDetail(arg);
+    const groups = ['BUT 1', 'BUT 2'].map((g) => {
+      const list = SAE.filter((s) => s.promo === g);
+      return `<p class="group"><b>${g}</b> · ${list.length} SAÉ</p><div class="rows">${list.map(saeRow).join('')}</div>`;
     }).join('');
-    const defaultQ = D.skills.soft.find((s) => s.id === 'curiosite') || D.skills.soft[0];
-    const chips = D.skills.soft.map((s) => `<button class="chip softskill-btn${s.id === (defaultQ && defaultQ.id) ? ' is-active' : ''}" data-id="${esc(s.id)}">${esc(s.name)}</button>`).join('');
-    return `<section class="section section--alt" id="technologies"><div class="container">
-      ${sectionHead('Technologies', 'Technologies &amp; langages', '')}
-      <div class="skills" id="skills-list">${cards}</div>
-      <div class="softskills" id="savoir-etre"><span class="softskills__label">Savoir-être</span>${chips}</div>
-      <div class="softskill-detail" id="softskillDetail">
-        <p class="prose softskill-detail__text" id="softskillText">${defaultQ ? esc(defaultQ.text) : ''}</p>
-      </div>
-    </div></section>`;
+    return `${h('Réalisations · SAÉ')}
+      <p class="muted small">$ ls -l sae/   (${SAE.length} SAÉ, de ${esc(SAE[0].id)} à ${esc(SAE[SAE.length - 1].id)})</p>
+      ${groups}
+      <div class="chips">${chip('projets', 'projets')}</div>`;
   }
 
-  function competencesOfficiellesHTML() {
-    const cards = (D.competences || []).map((c) => `
-      <a class="comp reveal" href="competence.html?id=${esc(c.id)}">
-        <div class="comp__top"><h3 class="comp__name">${esc(c.name)}</h3>${compDots(c.now)}</div>
-        <p class="comp__full">${esc(c.full)}</p>
-        <p class="comp__short">${esc(c.short)}</p>
-        <span class="comp__level">${esc(compLevelLabel(c.now))}</span>
-        <span class="comp__cue">Voir les preuves →</span>
-      </a>`).join('');
-    return `<section class="section" id="competences"><div class="container">
-      ${sectionHead('Compétences', 'Mes 6 compétences', 'Les six compétences du BUT Informatique, chacune appuyée par des preuves concrètes (SAÉ, projets, dépôts) et une analyse réflexive.')}
-      <div class="comps">${cards}</div>
-    </div></section>`;
+  function saeDetail(slug) {
+    const s = SAE.find((x) => x.slug === slug || x.id.toLowerCase() === String(slug).toLowerCase());
+    if (!s) return notFound(`SAÉ « ${slug} » introuvable`, 'sae');
+    const compIds = s.competences || COMPS.filter((c) => (c.saes || []).includes(s.slug)).map((c) => c.id);
+    const li = (arr) => (arr || []).map((t) => `<li>${esc(t)}</li>`).join('');
+    const i = SAE.indexOf(s);
+    const prev = SAE[i - 1], next = SAE[i + 1];
+    return `${h(`${esc(s.id)} <span class="muted">·</span> ${esc(s.title)}`)}
+      <p class="muted small">${esc(s.promo)}</p>
+      ${p(esc(s.summary))}
+      ${s.github ? `<div class="chips">${ext(s.github, 'Voir sur GitHub')}</div>` : ''}
+      ${s.objectifs ? h3('Objectifs de la SAÉ') + p(esc(s.objectifs)) : ''}
+      ${s.recit ? h3('Présentation et déroulé') + p(esc(s.recit)) : ''}
+      ${s.role ? h3('Mon rôle') + p(esc(s.role)) : ''}
+      ${s.taches ? `${h3('Tâches accomplies')}<div class="cols">
+          <div><p class="acc small">individuellement</p><ul class="todo">${li(s.taches.individuel)}</ul></div>
+          <div><p class="acc small">collectivement</p><ul class="todo">${li(s.taches.collectif)}</ul></div>
+        </div>` : ''}
+      ${s.difficultes && s.difficultes.length ? h3('Difficultés et solutions') + s.difficultes.map((d) => `
+        <div class="diff"><p><span class="tag-err">ERR</span><span>${esc(d.probleme)}</span></p><p><span class="tag-ok">FIX</span><span>${esc(d.solution)}</span></p></div>`).join('') : ''}
+      ${compIds.length || (s.skills || []).length ? h3('Compétences mobilisées') : ''}
+      ${s.niveaux && s.niveaux.length
+        ? `<div class="lv">${s.niveaux.map((n) => `${run(`competences ${n.comp}`, compName(n.comp))}<span class="muted">${esc(n.avant)} → <b>${esc(n.apres)}</b></span>`).join('')}</div>`
+        : (compIds.length ? `<div class="chips">${compIds.map((c) => chip(`competences ${c}`, compName(c))).join('')}</div>` : '')}
+      ${(s.skills || []).length ? `<div class="chips">${s.skills.map((k) => chip(`stack ${k}`, hardName(k))).join('')}</div>` : ''}
+      ${s.perspectives ? h3("Perspectives d'amélioration") + p(esc(s.perspectives)) : ''}
+      <div class="chips">
+        ${prev ? chip(`sae ${prev.slug}`, `← ${prev.id}`) : ''}
+        ${chip('sae', 'toutes les SAÉ')}
+        ${next ? chip(`sae ${next.slug}`, `${next.id} →`) : ''}
+      </div>`;
   }
 
-  function experiencesHTML() {
+  function cmdProjets(arg) {
+    if (arg) return projDetail(arg);
+    const keys = Object.keys(PROJ);
+    return `${h('Projets perso')}
+      <p class="muted small">$ ls projets/   (${keys.length} projets)</p><div class="gap"></div>
+      <div class="rows">${keys.map(projRow).join('')}</div>
+      <div class="chips">${chip('sae', 'sae')}</div>`;
+  }
+
+  function projDetail(k) {
+    const pr = PROJ[k];
+    if (!pr) return notFound(`projet « ${k} » introuvable`, 'projets');
+    const comps = COMPS.filter((c) => (c.projects || []).includes(k));
+    const points = (pr.points || []).filter((x) => !/^\[.*\]$/.test(x));
+    const imgs = pr.images || [];
+    return `${h(esc(pr.title))}
+      <p class="muted small">${esc(pr.year)} · ${esc(pr.domain)}</p>
+      ${p(esc(pr.tagline))}
+      ${pr.github ? `<div class="chips">${ext(pr.github, 'Voir sur GitHub')}</div>` : ''}
+      ${h3('Présentation')}${p(esc(pr.summary))}
+      ${pr.role ? h3('Travail effectué') + p(esc(pr.role)) : ''}
+      ${points.length ? `${h3('Points clés')}<ul class="todo">${points.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      ${imgs.length ? `${h3('Aperçu')}<div class="shots">${imgs.map((src, i) => `
+        <figure class="shot"><figcaption class="shot__bar">aperçu ${i + 1}/${imgs.length}</figcaption><img src="${esc(src)}" alt="Aperçu ${esc(pr.title)} ${i + 1}" loading="lazy" /></figure>`).join('')}</div>` : ''}
+      ${comps.length || (pr.skills || []).length ? h3('Compétences mobilisées') : ''}
+      ${comps.length ? `<div class="chips">${comps.map((c) => chip(`competences ${c.id}`, c.name)).join('')}</div>` : ''}
+      ${(pr.skills || []).length ? `<div class="chips">${pr.skills.map((x) => chip(`stack ${x}`, hardName(x))).join('')}</div>` : ''}
+      <div class="chips">${chip('projets', 'tous les projets')}</div>`;
+  }
+
+  function cmdObjectifs() {
+    const pl = D.projetPlus || {};
+    return `${h('Compétences à développer')}${p(linkify(pl.developper))}
+      ${h('Mes objectifs · BUT 3 et après')}${p(linkify(pl.objectifs))}`;
+  }
+
+  function cmdContact() {
     const s = D.site;
-    const exps = (D.experiences || []).map((x) => `
-        <div class="refcard reveal"><span class="sae-card__id">${esc(x.tag)}</span>
-          <h3 class="refcard__title">${esc(x.title)}</h3>
-          <p class="refcard__desc">${esc(x.desc)}</p>
-        </div>`).join('');
-    return `<section class="section section--alt" id="experiences"><div class="container container--narrow">
-      ${sectionHead('Expériences', 'Expériences professionnelles', '')}
-      <div class="reflist reflist--one">
-        ${exps}
-        <div class="refcard reveal"><span class="sae-card__id">Projet commandité</span>
-          <h3 class="refcard__title">Application de suivi de colis · IUT de Villetaneuse</h3>
-          <p class="refcard__desc">Commanditaire réel, équipe de cinq, cahier des charges et déploiement. Mon rôle : front-end et conception responsive.</p>
-          <div class="refcard__actions"><a href="sae.html?id=s3-01">Voir la SAÉ →</a></div>
+    return `${h('Me contacter')}
+      <dl class="kv">
+        <dt>email</dt><dd><a href="mailto:${esc(s.email)}">${esc(s.email)}</a> <button class="run small" data-copy="${esc(s.email)}">copier</button></dd>
+        <dt>linkedin</dt><dd><a href="${esc(s.linkedin)}" target="_blank" rel="noopener">${esc(s.linkedin.replace(/^https?:\/\/(www\.)?/, ''))}</a></dd>
+        <dt>github</dt><dd><a href="${esc(s.github)}" target="_blank" rel="noopener">${esc(s.github.replace(/^https?:\/\//, ''))}</a></dd>
+        <dt>recherche</dt><dd class="acc2">${esc(s.objective)}</dd>
+      </dl>
+      <div class="chips">${s.cv ? dl(s.cv, 'Télécharger mon CV', true) : ''}${ext(s.linkedin, 'LinkedIn')}${ext(s.github, 'GitHub')}</div>`;
+  }
+
+  function cmdCv() {
+    const s = D.site;
+    const file = s.cv.split('/').pop();
+    return `<p class="muted">$ wget ${esc(file)}</p>
+      <p class="ink">${esc(file)} <span class="ok">100%</span> ${'█'.repeat(24)}</p>
+      <div class="chips">${dl(s.cv, `Ouvrir ${file}`, true)}</div>`;
+  }
+
+  function cmdAide() {
+    const rows = VISIBLE.map((c) => `
+      <button class="row" style="--c1:13ch" data-cmd="${esc(c.name)}">
+        <span class="row__id">${esc(c.name)}</span><span class="row__t">${esc(c.desc)}</span><span class="row__x">${c.args ? '[id]' : ''}</span>
+      </button>`).join('');
+    return `${h('Commandes disponibles')}
+      <div class="rows">${rows}</div>
+      ${h3('Autres commandes')}
+      <dl class="kv">
+        <dt>clear</dt><dd>effacer l'écran (ou <span class="acc">Ctrl+L</span>)</dd>
+        <dt>theme</dt><dd>changer de thème : ${THEMES.map((t) => run(`theme ${t}`, t)).join(', ')}</dd>
+        <dt>clavier</dt><dd>afficher ou masquer le clavier fictif</dd>
+        <dt>history</dt><dd>les commandes déjà lancées</dd>
+      </dl>
+      ${h3('Raccourcis')}
+      <dl class="kv">
+        <dt>Tab</dt><dd>compléter la commande ou l'identifiant</dd>
+        <dt>↑ ↓</dt><dd>parcourir l'historique</dd>
+        <dt>clic</dt><dd>tout ce qui est souligné en pointillés lance une commande</dd>
+      </dl>`;
+  }
+
+  function cmdHistory() {
+    if (!history.length) return '<p class="muted">Aucune commande pour le moment.</p>';
+    return `<div class="rows">${history.map((c, i) => `<button class="row" style="--c1:4ch" data-cmd="${esc(c)}"><span class="row__id">${i + 1}</span><span class="row__t">${esc(c)}</span><span class="row__x"></span></button>`).join('')}</div>`;
+  }
+
+  function cmdSudo(arg) {
+    return `<p class="muted">[sudo] mot de passe pour recruteur : ********</p>
+      <p class="ok">Accès accordé.</p>
+      ${p(`Bonne idée${arg ? ` (« ${esc(arg)} »)` : ''}. La suite se passe par mail : <a href="mailto:${esc(D.site.email)}">${esc(D.site.email)}</a>.`)}
+      <div class="chips">${chip('contact', 'contact', true)}</div>`;
+  }
+
+  const THEMES = ['nuit', 'ambre', 'papier'];
+  function cmdTheme(arg) {
+    const cur = document.body.dataset.themeTerm || 'nuit';
+    const next = arg || THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+    if (!THEMES.includes(next)) return notFound(`thème « ${arg} » inconnu`, 'theme');
+    setTheme(next);
+    return `<p>Thème <span class="acc2">${esc(next)}</span> activé. <span class="muted">Autres :</span> ${THEMES.filter((t) => t !== next).map((t) => run(`theme ${t}`, t)).join(', ')}</p>`;
+  }
+  function cmdClavier() {
+    const open = toggleKeyboard();
+    return `<p class="muted">Clavier fictif ${open ? 'affiché' : 'masqué'}.</p>`;
+  }
+
+  function notFound(msg, back) {
+    return `<p class="err">erreur : ${esc(msg)}</p><div class="chips">${chip(back, back)}</div>`;
+  }
+
+  /* registre : nom, description, sous-commandes (identifiants), suites proposées */
+  const VISIBLE = [
+    { name: 'whoami', desc: 'qui je suis', run: cmdWhoami, next: ['experience', 'stack', 'projets', 'contact'] },
+    { name: 'experience', desc: 'stage et emploi', run: cmdExperience, next: ['stack', 'projets', 'cv'] },
+    { name: 'competences', desc: 'les 6 compétences du BUT', run: cmdCompetences, args: () => COMPS.map((c) => c.id), next: ['stack', 'sae'] },
+    { name: 'stack', desc: 'technos et niveaux', run: cmdStack, args: () => HARD.map((s) => s.id), next: ['projets', 'competences'] },
+    { name: 'projets', desc: 'projets perso et TP', run: cmdProjets, args: () => Object.keys(PROJ), next: ['sae', 'stack'] },
+    { name: 'sae', desc: `les ${SAE.length} SAÉ`, run: cmdSae, args: () => SAE.map((s) => s.slug), next: ['projets', 'competences'] },
+    { name: 'parcours', desc: 'ma formation', run: cmdParcours, next: ['objectifs', 'experience'] },
+    { name: 'objectifs', desc: 'ce que je vise', run: cmdObjectifs, next: ['contact', 'parcours'] },
+    { name: 'qualites', desc: 'savoir-être', run: cmdQualites, args: () => SOFT.map((s) => s.id), next: ['whoami', 'contact'] },
+    { name: 'contact', desc: 'me joindre', run: cmdContact, next: ['cv', 'whoami'] },
+    { name: 'cv', desc: 'télécharger le CV', run: cmdCv, next: ['contact', 'experience'] },
+  ];
+  const HIDDEN = [
+    { name: 'aide', run: cmdAide, next: ['whoami', 'experience', 'stack'] },
+    { name: 'history', run: cmdHistory },
+    { name: 'theme', run: cmdTheme, args: () => THEMES },
+    { name: 'clavier', run: cmdClavier },
+    { name: 'sudo', run: cmdSudo, next: ['contact'] },
+    { name: 'clear' },
+  ];
+  const ALIASES = {
+    help: 'aide', man: 'aide', '?': 'aide', ls: 'aide',
+    competence: 'competences', 'compétences': 'competences', 'compétence': 'competences',
+    skills: 'stack', technos: 'stack', langages: 'stack',
+    projet: 'projets', projects: 'projets', saes: 'sae',
+    experiences: 'experience', 'expérience': 'experience', 'expériences': 'experience', xp: 'experience',
+    qualite: 'qualites', 'qualités': 'qualites', 'savoir-etre': 'qualites',
+    formation: 'parcours', objectif: 'objectifs', mail: 'contact', email: 'contact',
+    keyboard: 'clavier', cls: 'clear', moi: 'whoami',
+  };
+  const ALL = [...VISIBLE, ...HIDDEN];
+  const findCmd = (name) => ALL.find((c) => c.name === (ALIASES[name] || name));
+
+  function lev(a, b) {
+    const m = a.length, n = b.length;
+    const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+    for (let j = 1; j <= n; j++) d[0][j] = j;
+    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    return d[m][n];
+  }
+
+  /* ============================================================
+     INTERFACE
+     ============================================================ */
+  const ps1 = (path) => `<span class="ps1"><span class="p-host">fares@portfolio</span><span class="p-sign p-colon">:</span><span class="p-path">${esc(path || '~')}</span><span class="p-sign">$</span></span>`;
+
+  const KEYS = [
+    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', 'Backspace'],
+    ['a', 'z', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+    ['q', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm'],
+    ['Tab', 'w', 'x', 'c', 'v', 'b', 'n', '.', ' ', 'Enter'],
+  ];
+  const KEY_LABEL = { Backspace: '⌫', Tab: '⇥ tab', Enter: '↵ entrée', ' ': 'espace' };
+  const KEY_HTML = { Backspace: '⌫', Tab: '⇥<span class="kl">&nbsp;tab</span>', Enter: '↵<span class="kl">&nbsp;entrée</span>', ' ': '<span class="kl">espace</span><span class="ks">␣</span>' };
+  const KEY_CLASS = { Backspace: 'key--wide', Tab: 'key--wide', Enter: 'key--enter', ' ': 'key--space' };
+
+  const mount = document.createElement('div');
+  mount.className = 'app';
+  mount.innerHTML = `
+      <div class="term" id="term">
+        <header class="bar-title">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="bar-title__path">fares@portfolio: <b>~/but-informatique</b></span>
+          <span class="bar-title__actions">
+            <button class="tbtn" data-cmd="aide">aide</button>
+            ${D.site.cv ? `<a class="tbtn tbtn--solid" href="${esc(D.site.cv)}" download target="_blank" rel="noopener">CV ↓</a>` : ''}
+          </span>
+        </header>
+        <div class="body">
+          <nav class="entries" id="entries" aria-label="Commandes">
+            <span class="entries__label">entrées</span>
+            ${VISIBLE.map((c) => `<button class="entry" data-cmd="${esc(c.name)}" data-entry="${esc(c.name)}"><span class="entry__chev">&gt;</span><span class="entry__name">${esc(c.name)}</span><span class="entry__desc">${esc(c.desc)}</span></button>`).join('')}
+            <p class="entries__tips"><kbd>Tab</kbd> compléter<br /><kbd>↑</kbd> <kbd>↓</kbd> historique<br /><kbd>Ctrl</kbd>+<kbd>L</kbd> effacer</p>
+          </nav>
+          <section class="screen" id="screen">
+            <div class="scroll" id="scroll" aria-live="polite"></div>
+            <div class="dock">
+              <div class="suggest" id="suggest"></div>
+              <form class="prompt" id="form" autocomplete="off">
+                ${ps1()}
+                <label class="field">
+                  <span class="ghost" id="ghost" aria-hidden="true"></span>
+                  <input id="input" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" enterkeyhint="go" aria-label="Commande" placeholder="tape une commande, ou « aide »" />
+                </label>
+              </form>
+            </div>
+          </section>
         </div>
-      </div>
-      <p class="prose reveal">Disponible pour un stage de 14 à 16 semaines à partir du 8 mars 2027 : <a href="mailto:${esc(s.email)}">${esc(s.email)}</a>.</p>
-    </div></section>`;
+        <div class="kbd" id="kbd" aria-label="Clavier fictif">
+          ${KEYS.map((row) => `<div class="krow">${row.map((k) => `<button class="key ${KEY_CLASS[k] || ''}" data-key="${esc(k)}" tabindex="-1" aria-label="${esc(KEY_LABEL[k] || k)}">${KEY_HTML[k] || esc(k)}</button>`).join('')}</div>`).join('')}
+        </div>
+        <footer class="status">
+          <span class="mode">FB</span>
+          <span class="branch">⎇ main</span>
+          <span class="dispo">${esc(D.site.objective)}</span>
+          <button id="kbdToggle" type="button">⌨ clavier</button>
+          <button id="themeToggle" type="button" aria-label="Changer de thème">◐<span class="kl"> thème</span></button>
+          <span class="enc">${esc(D.site.year)}</span>
+          <span class="clock" id="clock"></span>
+        </footer>
+      </div>`;
+  document.body.appendChild(mount);
+
+  const scroll = el('scroll');
+  const input = el('input');
+  const ghost = el('ghost');
+  const form = el('form');
+  const suggest = el('suggest');
+  const kbd = el('kbd');
+  const history = [];
+  let hIndex = -1;
+  let typingToken = 0;
+
+  /* ---------- thème & clavier ---------- */
+  function setTheme(t) {
+    document.body.dataset.themeTerm = t;
+    store.set('fb-theme', t);
+  }
+  setTheme(THEMES.includes(store.get('fb-theme')) ? store.get('fb-theme') : 'nuit');
+
+  function setKeyboard(open) {
+    kbd.hidden = !open;
+    // clavier fictif ouvert sur téléphone : pas de clavier natif
+    if (isPhone() && open) input.setAttribute('inputmode', 'none'); else input.removeAttribute('inputmode');
+    el('kbdToggle').innerHTML = `⌨<span class="kl"> ${open ? 'masquer le clavier' : 'clavier'}</span>`;
+    store.set('fb-kbd', open ? '1' : '0');
+  }
+  function toggleKeyboard() { setKeyboard(kbd.hidden); return !kbd.hidden; }
+  const savedKbd = store.get('fb-kbd');
+  setKeyboard(savedKbd == null ? !isPhone() && window.innerHeight >= 680 : savedKbd === '1');
+
+  function flashKey(k) {
+    const key = kbd.querySelector(`[data-key="${CSS.escape(k)}"]`);
+    if (!key) return;
+    key.classList.add('is-down');
+    setTimeout(() => key.classList.remove('is-down'), 130);
   }
 
-  function evolutionHTML() {
-    const e = D.evolution;
-    return `<section class="section section--alt" id="evolution"><div class="container">
-      ${sectionHead('Évolution', 'Évolution entre le BUT 1 et le BUT 2')}
-      <div class="evolution">
-        <div class="evolution__col reveal"><span class="evolution__tag">BUT 1</span><p>${esc(e.but1)}</p></div>
-        <div class="evolution__arrow reveal" aria-hidden="true">→</div>
-        <div class="evolution__col reveal"><span class="evolution__tag evolution__tag--now">BUT 2</span><p>${esc(e.but2)}</p></div>
-      </div>
-    </div></section>`;
-  }
+  /* ---------- horloge ---------- */
+  function tick() { el('clock').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+  tick(); setInterval(tick, 15000);
 
-  function saeHTML() {
-    const saeItems = [...D.sae.but1, ...D.sae.but2];
-    const saeCards = saeItems.map((s) => `
-      <a class="sae-card reveal" href="sae.html?id=${esc(s.slug)}">
-        <span class="sae-card__id">${esc(s.id)}</span>
-        <h4 class="sae-card__title">${esc(s.title)}</h4>
-        <p class="sae-card__desc">${esc(s.summary)}</p>
-        <span class="sae-card__more">Ouvrir →${s.github ? '<span class="mono">GitHub</span>' : ''}</span>
-      </a>`).join('');
-    const projItems = Object.entries(D.projects);
-    const projCards = projItems.map(([slug, p]) => `
-      <a class="sae-card reveal" href="projet.html?id=${esc(slug)}">
-        <span class="sae-card__id">${esc(p.domain || 'Projet')}</span>
-        <h4 class="sae-card__title">${esc(p.title)}</h4>
-        <p class="sae-card__desc">${esc(p.tagline || p.summary || '')}</p>
-        <span class="sae-card__more">Ouvrir →${p.github ? '<span class="mono">GitHub</span>' : ''}</span>
-      </a>`).join('');
-    return `<section class="section" id="sae"><div class="container">
-      ${sectionHead('Réalisations', 'Réalisations', '')}
-      <div class="sae-group">
-        <h3 class="sae-group__title reveal"><span class="sae-group__name">SAÉ</span><span class="sae-group__range">S1.01 → S4.01</span></h3>
-        <div class="grid">${saeCards}</div>
-      </div>
-      <div class="sae-group">
-        <h3 class="sae-group__title reveal"><span class="sae-group__name">Projets perso</span><span class="sae-group__range">${projItems.length} projets</span></h3>
-        <div class="grid">${projCards}</div>
-      </div>
-    </div></section>`;
-  }
-
-  function renderHome() {
-    el('main').innerHTML =
-      heroHTML() + competencesOfficiellesHTML() + competencesHTML() +
-      objectifsHTML() + experiencesHTML() + parcoursHTML() + saeHTML();
-  }
-
-  /* ---------- pages détail ---------- */
-  function notFound(title, backHref, backLabel) {
-    return `<section class="section"><div class="container container--narrow">
-      <p class="detail__meta">Erreur 404</p>
-      <h1 class="detail__title">${esc(title)}</h1>
-      <p class="detail__tagline">Cette page n'existe pas ou a été déplacée.</p>
-      <p style="margin-top:28px"><a class="btn btn--ghost" href="${backHref}">← ${esc(backLabel)}</a></p>
-    </div></section>`;
-  }
-
-  function chips(list, cls) {
-    return list.map((t) => `<span class="chip ${cls || ''}">${esc(t)}</span>`).join('');
-  }
-
-  function renderCompetence6(c) {
-    const allSae = [...D.sae.but1, ...D.sae.but2];
-    const refs = [];
-    (c.saes || []).forEach((slug) => {
-      const sa = allSae.find((x) => x.slug === slug);
-      if (sa) refs.push({ kicker: 'SAÉ ' + sa.id, title: sa.title, desc: sa.summary, href: `sae.html?id=${slug}`, link: 'Voir la SAÉ →', github: sa.github });
-    });
-    (c.projects || []).forEach((slug) => {
-      const p = D.projects[slug];
-      if (p) refs.push({ kicker: 'Projet', title: p.title, desc: p.tagline, href: `projet.html?id=${slug}`, link: 'Voir le projet →', github: p.github });
-    });
-    const refHTML = refs.length ? `<h2>Expériences &amp; preuves</h2><div class="reflist">${refs.map((r) => `
-        <div class="refcard"><span class="sae-card__id">${esc(r.kicker)}</span><h3 class="refcard__title">${esc(r.title)}</h3><p class="refcard__desc">${esc(r.desc)}</p>
-        <div class="refcard__actions"><a href="${r.href}">${r.link}</a>${r.github ? `<a href="${esc(r.github)}" target="_blank" rel="noopener">Dépôt GitHub ↗</a>` : ''}</div></div>`).join('')}</div>` : '';
-    const skillNames = {}; D.skills.hard.forEach((s) => (skillNames[s.id] = s.name));
-    const langHTML = (c.langs && c.langs.length)
-      ? `<h2>Technologies mobilisées</h2><div class="detail__tags">${c.langs.map((l) => `<a class="chip" href="competence.html?id=${esc(l)}">${esc(skillNames[l] || l)}</a>`).join('')}</div>`
-      : '';
-    el('main').innerHTML = `
-      <article class="detail">
-        <header class="detail__hero"><div class="container">
-          <a class="detail__back" href="index.html#competences">← Compétences</a>
-          <p class="detail__meta">Compétence</p>
-          <h1 class="detail__title">${esc(c.full)}</h1>
-          <div class="comp-level reveal is-visible">${compDots(c.now)}<span>${esc(compLevelLabel(c.now))}</span></div>
-        </div></header>
-        <div class="section"><div class="container container--narrow">
-          <p class="prose">${esc(c.short)}</p>
-          <h2>Analyse réflexive</h2>
-          <div class="reflect">
-            <div class="reflect__q"><h3>Ce que j'ai appris</h3><p class="prose">${esc(c.appris)}</p></div>
-            <div class="reflect__q"><h3>Comment je le prouve</h3><p class="prose">${esc(c.prouver)}</p></div>
-            <div class="reflect__q"><h3>Ce qu'il me reste à améliorer</h3><p class="prose">${esc(c.ameliorer)}</p></div>
-          </div>
-          ${refHTML}
-          ${langHTML}
-        </div></div>
-      </article>`;
-  }
-
-  function renderCompetence() {
-    const id = params.get('id');
-    const c = (D.competences || []).find((x) => x.id === id);
-    if (c) { renderCompetence6(c); return; }
-    const s = D.skills.hard.find((x) => x.id === id);
-    if (!s) { el('main').innerHTML = notFound('Compétence introuvable', 'index.html#competences', 'Compétences'); return; }
-    const isNew = s.before == null;
-    const lvl = skillLevel(s.now);
-    const yr = D.skills.years;
-    const scale = isNew
-      ? `<span class="skill__pt--new">Nouveau · ${esc(yr.now)}</span><span>${s.now}%</span>`
-      : `<span>${esc(yr.before)} · ${s.before}%</span><span class="skill__pt--now">${esc(yr.now)} · ${s.now}%</span>`;
-    // Réalisations liées : SAÉ + projets qui déclarent ce skill (toutes joignables)
-    const allSae = [...D.sae.but1, ...D.sae.but2];
-    const refs = [];
-    allSae.filter((sa) => (sa.skills || []).includes(id)).forEach((sa) => {
-      refs.push({ kicker: 'SAÉ ' + sa.id, title: sa.title, desc: sa.summary, href: `sae.html?id=${sa.slug}`, link: 'Voir la SAÉ →', github: sa.github });
-    });
-    Object.entries(D.projects).filter(([, p]) => (p.skills || []).includes(id)).forEach(([slug, p]) => {
-      refs.push({ kicker: 'Projet', title: p.title, desc: p.tagline, href: `projet.html?id=${slug}`, link: 'Voir le projet →', github: p.github });
-    });
-    const refHTML = refs.length ? `<h2>Projets liés</h2><div class="reflist">${refs.map((r) => `
-        <div class="refcard"><span class="sae-card__id">${esc(r.kicker)}</span><h3 class="refcard__title">${esc(r.title)}</h3><p class="refcard__desc">${esc(r.desc)}</p>
-        <div class="refcard__actions"><a href="${r.href}">${r.link}</a>${r.github ? `<a href="${esc(r.github)}" target="_blank" rel="noopener">Dépôt GitHub ↗</a>` : ''}</div></div>`).join('')}</div>` : '';
-    const codeHTML = s.code ? `<h2>Extrait de code</h2><pre class="codeblock"><code>${esc(s.code)}</code></pre>` : '';
-
-    el('main').innerHTML = `
-      <article class="detail">
-        <header class="detail__hero"><div class="container">
-          <a class="detail__back" href="index.html#competences">← Compétences</a>
-          <p class="detail__meta">Compétence · <span class="${lvl === 'Maîtrisé' ? 'is-master' : ''}">${esc(lvl)}</span></p>
-          <h1 class="detail__title">${esc(s.name)}</h1>
-          <div class="skillbar reveal is-visible" style="--now:${s.now}%;--before:${s.before || 0}%; margin-top:24px; max-width:440px;">
-            <div class="skill__track"><span class="skill__fill"></span>${isNew ? '' : '<span class="skill__before" aria-hidden="true"></span>'}</div>
-            <div class="skill__scale" style="margin-top:10px;">${scale}</div>
-          </div>
-          ${s.github ? `<div class="detail__actions"><a class="btn btn--primary" href="${esc(s.github)}" target="_blank" rel="noopener">Voir sur GitHub ↗</a></div>` : ''}
-        </div></header>
-        <div class="section"><div class="container container--narrow">
-          ${s.proof ? `<p class="proofnote">${esc(s.proof)}</p>` : ''}
-          ${refHTML}
-          ${codeHTML}
-        </div></div>
-      </article>`;
-  }
-
-  function renderProjet() {
-    const id = params.get('id');
-    const p = D.projects[id];
-    if (!p) { el('main').innerHTML = notFound('Projet introuvable', 'index.html#competences', 'Compétences'); return; }
-    const skillNames = {}; D.skills.hard.forEach((s) => (skillNames[s.id] = s.name));
-    const skillChips = (p.skills || []).map((sid) => `<a class="chip" href="competence.html?id=${esc(sid)}">${esc(skillNames[sid] || sid)}</a>`).join('');
-    const compNames = {}; (D.competences || []).forEach((c) => (compNames[c.id] = c.name));
-    const compChips = (D.competences || []).filter((c) => (c.projects || []).includes(id)).map((c) => `<a class="chip chip--solid" href="competence.html?id=${esc(c.id)}">${esc(compNames[c.id] || c.id)}</a>`).join('');
-    const points = (p.points || []).map((pt) => `<li>${esc(pt)}</li>`).join('');
-    el('main').innerHTML = `
-      <article class="detail">
-        <header class="detail__hero"><div class="container">
-          <a class="detail__back" href="index.html#competences">← Retour</a>
-          <p class="detail__meta">${esc(p.year)} · ${esc(p.domain)}</p>
-          <h1 class="detail__title">${esc(p.title)}</h1>
-          <p class="detail__tagline">${esc(p.tagline)}</p>
-          <div class="detail__tags">${chips(p.stack, 'chip--solid')}</div>
-          ${p.github ? `<div class="detail__actions"><a class="btn btn--primary" href="${esc(p.github)}" target="_blank" rel="noopener">Voir sur GitHub ↗</a></div>` : ''}
-        </div></header>
-        <div class="section"><div class="container container--narrow">
-          <h2>Présentation</h2><p class="prose">${esc(p.summary)}</p>
-          <h2>Travail effectué</h2><p class="prose">${esc(p.role || '[Description du travail effectué.]')}</p>
-          <h2>Aperçu</h2>
-          ${(p.images && p.images.length)
-            ? p.images.map((src, i) => `<img class="projet__img" src="${esc(src)}" alt="Aperçu ${esc(p.title)} ${i + 1}" />`).join('')
-            : `<div class="projet__img-placeholder">[Image ou capture d'écran à ajouter]</div>`}
-          <h2>Compétences mobilisées</h2>
-          ${compChips ? `<div class="detail__tags">${compChips}</div>` : ''}
-          ${skillChips ? `<div class="detail__tags" style="margin-top:12px">${skillChips}</div>` : ''}
-        </div></div>
-      </article>`;
-  }
-
-  function renderSae() {
-    const id = params.get('id');
-    let item = null, promo = null;
-    [['but1', 'BUT1'], ['but2', 'BUT2']].forEach(([k, lbl]) => {
-      const f = D.sae[k].find((x) => x.slug === id);
-      if (f) { item = f; promo = lbl; }
-    });
-    if (!item) { el('main').innerHTML = notFound('SAÉ introuvable', 'index.html#sae', 'SAÉ'); return; }
-    const skillNames = {}; D.skills.hard.forEach((s) => (skillNames[s.id] = s.name));
-    const compNames = {}; (D.competences || []).forEach((c) => (compNames[c.id] = c.name));
-
-    // Compétences (les 6) liées : explicites, sinon déduites des compétences qui citent cette SAÉ
-    let compIds = item.competences;
-    if (!compIds) compIds = (D.competences || []).filter((c) => (c.saes || []).includes(item.slug)).map((c) => c.id);
-    const compChips = compIds.length
-      ? `<div class="detail__tags">${compIds.map((cid) => `<a class="chip chip--solid" href="competence.html?id=${esc(cid)}">${esc(compNames[cid] || cid)}</a>`).join('')}</div>` : '';
-    const langChips = (item.skills && item.skills.length)
-      ? `<div class="detail__tags" style="margin-top:12px">${item.skills.map((sid) => `<a class="chip" href="competence.html?id=${esc(sid)}">${esc(skillNames[sid] || sid)}</a>`).join('')}</div>` : '';
-
-    const sec = [];
-    if (item.objectifs) sec.push(`<h2>Objectifs de la SAÉ</h2><p class="prose">${esc(item.objectifs)}</p>`);
-    sec.push(`<h2>Présentation &amp; déroulé</h2><p class="prose">${esc(item.recit || item.summary)}</p>`);
-    if (item.role) sec.push(`<h2>Mon rôle</h2><p class="prose">${esc(item.role)}</p>`);
-    if (item.taches) {
-      const li = (arr) => (arr || []).map((t) => `<li>${esc(t)}</li>`).join('');
-      sec.push(`<h2>Tâches accomplies</h2><div class="taches">
-        <div class="taches__col"><h3 class="taches__t">Individuellement</h3><ul class="points">${li(item.taches.individuel)}</ul></div>
-        <div class="taches__col"><h3 class="taches__t">Collectivement</h3><ul class="points">${li(item.taches.collectif)}</ul></div>
-      </div>`);
-    } else if (item.points && item.points.length) {
-      sec.push(`<h2>Réalisations</h2><ul class="points">${item.points.map((pt) => `<li>${esc(pt)}</li>`).join('')}</ul>`);
+  /* ---------- complétion ---------- */
+  function completion(value) {
+    const v = value.replace(/^\s+/, '').toLowerCase();
+    if (!v) return '';
+    const parts = v.split(/\s+/);
+    if (parts.length === 1) {
+      const m = [...VISIBLE, ...HIDDEN].map((c) => c.name).find((n) => n.startsWith(v) && n !== v);
+      return m || '';
     }
-    if (item.difficultes && item.difficultes.length) {
-      const d = item.difficultes.map((x) => `<div class="diff"><p class="prose"><b>Difficulté.</b> ${esc(x.probleme)}</p><p class="prose"><b>Solution.</b> ${esc(x.solution)}</p></div>`).join('');
-      sec.push(`<h2>Difficultés &amp; solutions</h2>${d}`);
-    }
-    let compBlock = `<h2>Compétences mobilisées</h2>`;
-    compBlock += compChips || `<p class="prose">À renseigner.</p>`;
-    if (langChips) compBlock += langChips;
-    if (item.niveaux && item.niveaux.length) {
-      compBlock += `<div class="niveaux">${item.niveaux.map((n) => `<div class="niveau"><a class="niveau__c" href="competence.html?id=${esc(n.comp)}">${esc(compNames[n.comp] || n.comp)}</a><span class="niveau__ba">${esc(n.avant)} <b>→ ${esc(n.apres)}</b></span></div>`).join('')}</div>`;
-    }
-    sec.push(compBlock);
-    if (item.perspectives) sec.push(`<h2>Perspectives d'amélioration</h2><p class="prose">${esc(item.perspectives)}</p>`);
-
-    el('main').innerHTML = `
-      <article class="detail">
-        <header class="detail__hero"><div class="container">
-          <a class="detail__back" href="index.html#sae">← SAÉ</a>
-          <p class="detail__meta">${esc(item.id)} · ${esc(promo)}</p>
-          <h1 class="detail__title">${esc(item.title)}</h1>
-          <p class="detail__tagline">${esc(item.summary)}</p>
-          <div class="detail__actions">
-            ${item.github ? `<a class="btn btn--primary" href="${esc(item.github)}" target="_blank" rel="noopener">Voir sur GitHub ↗</a>` : ''}
-            <a class="btn btn--ghost" href="index.html#sae">Toutes les SAÉ</a>
-          </div>
-        </div></header>
-        <div class="section"><div class="container container--narrow">
-          ${sec.join('\n          ')}
-        </div></div>
-      </article>`;
+    const c = findCmd(parts[0]);
+    if (!c || !c.args || parts.length > 2) return '';
+    const m = c.args().find((a) => a.toLowerCase().startsWith(parts[1]) && a.toLowerCase() !== parts[1]);
+    return m ? `${parts[0]} ${m}` : '';
+  }
+  function updateGhost() {
+    const v = input.value;
+    const c = completion(v);
+    const lead = v.match(/^\s*/)[0];
+    ghost.innerHTML = c && (lead + c).toLowerCase().startsWith(v.toLowerCase())
+      ? `<span class="typed">${esc(v)}</span><span class="rest">${esc((lead + c).slice(v.length))}</span>` : '';
+  }
+  function acceptGhost() {
+    const c = completion(input.value);
+    if (c) { input.value = c + (findCmd(c) && findCmd(c).args && !c.includes(' ') ? ' ' : ''); updateGhost(); return true; }
+    return false;
   }
 
-  function renderQualite() {
-    const id = params.get('id');
-    const q = D.skills.soft.find((x) => x.id === id);
-    if (!q) { el('main').innerHTML = notFound('Qualité introuvable', 'index.html#competences', 'Compétences'); return; }
-    el('main').innerHTML = `
-      <article class="detail">
-        <header class="detail__hero"><div class="container">
-          <a class="detail__back" href="index.html#competences">← Compétences</a>
-          <p class="detail__meta">Savoir-être</p>
-          <h1 class="detail__title">${esc(q.name)}</h1>
-        </div></header>
-        <div class="section"><div class="container container--narrow">
-          <h2>Pourquoi je m'attribue cette qualité</h2>
-          <p class="prose">${esc(q.text)}</p>
-        </div></div>
-      </article>`;
+  /* ---------- exécution ---------- */
+  function setSuggest(names) {
+    suggest.innerHTML = names && names.length
+      ? `<span>suite :</span>${names.map((n) => chip(n, n)).join('')}` : '';
+  }
+  function setActive(name) {
+    document.querySelectorAll('.entry').forEach((b) => b.classList.toggle('is-active', b.dataset.entry === name));
+    const act = document.querySelector('.entry.is-active');
+    if (act && isPhone()) act.scrollIntoView({ block: 'nearest', inline: 'center', behavior: reduced ? 'auto' : 'smooth' });
+  }
+  function setHash(line) {
+    const slug = line.trim().split(/\s+/).join('-');
+    try { history.length && window.history.replaceState(null, '', '#' + slug); } catch (e) { /* cadre sans historique */ }
+  }
+  function append(html) {
+    const block = document.createElement('section');
+    block.className = 'out';
+    block.innerHTML = html;
+    scroll.appendChild(block);
+    block.querySelectorAll('.avatar').forEach(pixelReveal);
+    return block;
   }
 
-  /* ---------- interactions ---------- */
-  function wireNav() {
-    const toggle = el('navToggle');
-    const links = el('navLinks');
-    toggle?.addEventListener('click', () => {
-      const open = links.classList.toggle('is-open');
-      toggle.classList.toggle('is-open', open);
-      toggle.setAttribute('aria-expanded', String(open));
-    });
-    links?.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
-      links.classList.remove('is-open'); toggle?.classList.remove('is-open');
-    }));
+  /* la photo « se charge » en gros pixels puis devient nette */
+  function pixelReveal(fig) {
+    const img = fig.querySelector('.avatar__img');
+    const cv = fig.querySelector('.avatar__px');
+    if (reduced || !cv || !cv.getContext) { fig.classList.add('is-sharp'); return; }
+    const go = async () => {
+      const ctx = cv.getContext('2d');
+      const size = 240;
+      cv.width = size; cv.height = size;
+      ctx.imageSmoothingEnabled = false;
+      const tmp = document.createElement('canvas');
+      const tctx = tmp.getContext('2d');
+      for (const n of [6, 12, 24, 48, 96]) {
+        tmp.width = n; tmp.height = n;
+        tctx.drawImage(img, 0, 0, n, n);
+        ctx.clearRect(0, 0, size, size);
+        ctx.drawImage(tmp, 0, 0, n, n, 0, 0, size, size);
+        await sleep(110);
+      }
+      fig.classList.add('is-sharp');
+    };
+    if (img.complete && img.naturalWidth) go(); else img.addEventListener('load', go, { once: true });
   }
 
-  function wireReveal() {
-    const items = document.querySelectorAll('.reveal:not(.is-visible)');
-    if ('IntersectionObserver' in window && items.length) {
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); } });
-      }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
-      items.forEach((x) => io.observe(x));
+  function execute(raw) {
+    const line = raw.trim();
+    if (!line) return;
+    if (history[history.length - 1] !== line) history.push(line);
+    hIndex = -1;
+    const [name, ...rest] = line.split(/\s+/);
+    const arg = rest.join(' ').toLowerCase();
+    const c = findCmd(name.toLowerCase());
+    if (c && c.name === 'clear') { scroll.innerHTML = ''; setSuggest(['whoami', 'aide']); return; }
+    let out;
+    if (!c) {
+      const names = ALL.map((x) => x.name).concat(Object.keys(ALIASES));
+      const best = names.map((n) => [n, lev(name.toLowerCase(), n)]).sort((a, b) => a[1] - b[1])[0];
+      const guess = best && best[1] <= 3 ? (ALIASES[best[0]] || best[0]) : null;
+      out = `<p class="err">zsh: commande introuvable : ${esc(name)}</p>
+        ${guess ? `<p>Vouliez-vous dire ${run(guess)} ?</p>` : ''}
+        <p class="muted">Tape ${run('aide')} pour voir toutes les commandes.</p>`;
     } else {
-      items.forEach((x) => x.classList.add('is-visible'));
+      out = c.run(arg);
+    }
+    const block = append(`<p class="echo">${ps1()} <span class="cmd">${esc(line)}</span></p>${out}`);
+    // le début de la réponse s'affiche en haut de l'écran
+    scroll.scrollTo({ top: block.offsetTop - 8, behavior: reduced ? 'auto' : 'smooth' });
+    if (c) {
+      setActive(VISIBLE.includes(c) ? c.name : '');
+      setSuggest(c.next || []);
+      if (VISIBLE.includes(c) || c.name === 'aide') setHash(line);
     }
   }
 
-  function wireSpy() {
-    if (!onHome) return;
-    const links = el('navLinks');
-    const map = new Map([...links.querySelectorAll('a')].map((a) => [a.getAttribute('href').split('#')[1], a]));
-    const secs = [...document.querySelectorAll('main section[id]')];
-    if (!('IntersectionObserver' in window) || !secs.length) return;
-    const spy = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (!e.isIntersecting) return;
-        map.forEach((a) => a.classList.remove('is-active'));
-        map.get(e.target.id)?.classList.add('is-active');
-      });
-    }, { rootMargin: '-45% 0px -50% 0px' });
-    secs.forEach((s) => spy.observe(s));
+  async function typeAndRun(cmd) {
+    const my = ++typingToken;
+    input.value = '';
+    updateGhost();
+    if (!reduced) {
+      for (const ch of cmd) {
+        if (my !== typingToken) return;
+        input.value += ch;
+        flashKey(ch);
+        updateGhost();
+        await sleep(24 + Math.random() * 34);
+      }
+      if (my !== typingToken) return;
+      flashKey('Enter');
+      await sleep(110);
+    }
+    if (my !== typingToken) return;
+    input.value = '';
+    updateGhost();
+    execute(cmd);
   }
 
-  function wireSoftSkills() {
-    const btns = document.querySelectorAll('.softskill-btn');
-    const textEl = el('softskillText');
-    if (!btns.length || !textEl) return;
-    btns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        const q = D.skills.soft.find((s) => s.id === id);
-        if (!q) return;
-        btns.forEach((b) => b.classList.remove('is-active'));
-        btn.classList.add('is-active');
-        textEl.textContent = q.text;
-      });
-    });
+  /* ---------- événements ---------- */
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    typingToken++;
+    const v = input.value;
+    input.value = '';
+    updateGhost();
+    execute(v);
+  });
+  input.addEventListener('input', updateGhost);
+  input.addEventListener('keydown', (e) => {
+    typingToken++;
+    flashKey(e.key.length === 1 ? e.key.toLowerCase() : e.key);
+    if (e.key === 'Tab') { e.preventDefault(); acceptGhost(); }
+    else if (e.key === 'ArrowRight' && input.selectionStart === input.value.length && ghost.textContent) { e.preventDefault(); acceptGhost(); }
+    else if (e.key === 'ArrowUp') {
+      if (!history.length) return;
+      e.preventDefault();
+      hIndex = hIndex < 0 ? history.length - 1 : Math.max(0, hIndex - 1);
+      input.value = history[hIndex]; updateGhost();
+    } else if (e.key === 'ArrowDown') {
+      if (hIndex < 0) return;
+      e.preventDefault();
+      hIndex += 1;
+      if (hIndex >= history.length) { hIndex = -1; input.value = ''; } else input.value = history[hIndex];
+      updateGhost();
+    } else if (e.key.toLowerCase() === 'l' && e.ctrlKey) { e.preventDefault(); execute('clear'); }
+  });
+
+  // tout élément [data-cmd] lance sa commande ; [data-copy] copie un texte
+  document.addEventListener('click', (e) => {
+    const cp = e.target.closest('[data-copy]');
+    if (cp) {
+      const txt = cp.dataset.copy;
+      const done = () => { cp.textContent = 'copié ✓'; setTimeout(() => (cp.textContent = 'copier'), 1600); };
+      try { navigator.clipboard.writeText(txt).then(done, () => (cp.textContent = txt)); } catch (err) { cp.textContent = txt; }
+      return;
+    }
+    const t = e.target.closest('[data-cmd]');
+    if (t) { e.preventDefault(); typeAndRun(t.dataset.cmd); return; }
+  });
+
+  // clavier fictif
+  kbd.addEventListener('pointerdown', (e) => {
+    const k = e.target.closest('[data-key]');
+    if (!k) return;
+    e.preventDefault();
+    typingToken++;
+    const key = k.dataset.key;
+    flashKey(key);
+    if (key === 'Backspace') input.value = input.value.slice(0, -1);
+    else if (key === 'Tab') acceptGhost();
+    else if (key === 'Enter') { form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true })); return; }
+    else input.value += key;
+    updateGhost();
+  });
+
+  el('kbdToggle').addEventListener('click', toggleKeyboard);
+  el('themeToggle').addEventListener('click', () => typeAndRun('theme'));
+
+  // sur ordinateur, cliquer dans l'écran remet le curseur dans l'invite
+  el('screen').addEventListener('click', (e) => {
+    if (isPhone() || e.target.closest('a, button, input') || window.getSelection().toString()) return;
+    input.focus();
+  });
+  // taper n'importe où écrit dans l'invite
+  document.addEventListener('keydown', (e) => {
+    if (document.activeElement === input || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length === 1 && !e.target.closest('input, textarea')) { input.focus(); }
+  });
+
+  /* ---------- démarrage ---------- */
+  function startCommand() {
+    const id = params.get('id');
+    if (page === 'competence' && id) return `competences ${id}`;
+    if (page === 'projet' && id) return `projets ${id}`;
+    if (page === 'sae' && id) return `sae ${id}`;
+    if (page === 'qualite' && id) return `qualites ${id}`;
+    const hash = decodeURIComponent(location.hash.slice(1));
+    if (hash) {
+      const i = hash.indexOf('-');
+      const name = i < 0 ? hash : hash.slice(0, i);
+      if (findCmd(name)) return i < 0 ? name : `${name} ${hash.slice(i + 1)}`;
+    }
+    return null;
   }
 
-  /* ---------- boot ---------- */
-  el('navRoot').innerHTML = navHTML();
-  el('footerRoot').innerHTML = footerHTML();
-  if (onHome) { renderHome(); wireSoftSkills(); }
-  else if (page === 'competence') renderCompetence();
-  else if (page === 'projet') renderProjet();
-  else if (page === 'sae') renderSae();
-  else if (page === 'qualite') renderQualite();
-  wireNav();
-  wireReveal();
-  wireSpy();
+  async function boot() {
+    const target = startCommand();
+    const seen = (() => { try { return sessionStorage.getItem('fb-boot') === '1'; } catch (e) { return false; } })();
+    try { sessionStorage.setItem('fb-boot', '1'); } catch (e) { /* rien */ }
+
+    const lines = [
+      `<span class="ink">FaresOS ${esc(D.site.year)}</span> · BUT Informatique, parcours réalisation d'applications`,
+      `<span class="ok">[ ok ]</span> chargement de data.js : ${SAE.length} SAÉ, ${Object.keys(PROJ).length} projets, ${HARD.length} technos`,
+      `<span class="ok">[ ok ]</span> montage de ~/experience : ${EXP.map((x) => esc(x.title.split('·').pop().trim())).join(', ')}`,
+      `<span class="ok">[ ok ]</span> statut : <span class="acc2">${esc(D.site.objective)}</span>`,
+      `<span class="muted">Clique sur une entrée <span class="acc">&gt;</span>, utilise le clavier ou tape ${run('aide')}.</span>`,
+    ];
+    const box = append('<div class="boot" id="boot"></div>');
+    const bootEl = box.querySelector('#boot');
+    let fast = reduced || seen || !!target;
+    const skip = () => { fast = true; };
+    window.addEventListener('keydown', skip, { once: true });
+    window.addEventListener('pointerdown', skip, { once: true });
+    for (const l of lines) {
+      const d = document.createElement('div');
+      d.innerHTML = l;
+      bootEl.appendChild(d);
+      if (!fast) await sleep(260);
+    }
+    if (!fast) await sleep(250);
+    setSuggest(['whoami', 'experience', 'stack', 'aide']);
+    await typeAndRun(target || 'whoami');
+    if (!isPhone()) input.focus({ preventScroll: true });
+  }
+  boot();
 })();
