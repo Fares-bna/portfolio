@@ -393,7 +393,7 @@
       <div class="chips">${chip('contact', 'contact', true)}</div>`;
   }
 
-  const THEMES = ['nuit', 'ambre', 'papier'];
+  const THEMES = ['nuit', 'noir', 'papier'];
   function cmdTheme(arg) {
     const cur = document.body.dataset.themeTerm || 'nuit';
     const next = arg || THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];

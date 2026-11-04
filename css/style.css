@@ -3,7 +3,7 @@
    Le site est un terminal : on lance des commandes (en les
    tapant, en cliquant sur les entrées « > » ou sur le clavier
    fictif) et chaque commande affiche une partie du portfolio.
-   Thèmes : nuit (défaut), ambre (écran phosphore), papier (clair).
+   Thèmes : nuit (défaut), noir (fond noir), papier (clair).
    Une seule police : JetBrains Mono.
    ============================================================ */
 
@@ -26,7 +26,6 @@
   --key:       #161d36;
   --key-edge:  #0a0f1f;
   --glow:      0 0 0 transparent;
-  --scan:      0;
 
   --font: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --fs: 15px;
@@ -34,23 +33,21 @@
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   color-scheme: dark;
 }
-body[data-theme-term="ambre"] {
-  --bg:       #0b0702;
-  --win:      #140d04;
-  --win-2:    #1b1206;
-  --line:     #3a2810;
-  --ink:      #ffd394;
-  --ink-soft: #e0ae68;
-  --meta:     #9c7742;
-  --accent:   #ffb648;
-  --accent-2: #fff0c9;
-  --ok:       #ffd394;
-  --err:      #ff8f5a;
-  --sel:      rgba(255, 182, 72, 0.25);
-  --key:      #22170a;
-  --key-edge: #0d0803;
-  --glow:     0 0 6px rgba(255, 170, 60, 0.45);
-  --scan:     1;
+body[data-theme-term="noir"] {
+  --bg:       #000000;
+  --win:      #000000;
+  --win-2:    #0b0b0d;
+  --line:     #26262b;
+  --ink:      #f1f1f3;
+  --ink-soft: #b9b9c1;
+  --meta:     #7c7c86;
+  --accent:   #6cb2ff;
+  --accent-2: #ffb454;
+  --ok:       #5fe08a;
+  --err:      #ff6b72;
+  --sel:      rgba(108, 178, 255, 0.18);
+  --key:      #111114;
+  --key-edge: #000000;
 }
 body[data-theme-term="papier"] {
   --bg:       #dfe4ee;
@@ -107,12 +104,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.7);
   max-width: 1440px;
   margin: 0 auto;
-}
-/* lignes de balayage (thème ambre) */
-.term::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
-  opacity: calc(var(--scan) * 0.55);
-  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
 }
 
 /* Barre de titre */
@@ -246,7 +237,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .avatar__img { opacity: 0; transition: opacity .35s; }
 .avatar.is-sharp .avatar__img { opacity: 1; }
 .avatar.is-sharp .avatar__px { opacity: 0; }
-body[data-theme-term="ambre"] .avatar__img, body[data-theme-term="ambre"] .avatar__px { filter: grayscale(1) sepia(1) saturate(2.2) hue-rotate(-12deg) brightness(.95); }
 
 /* clé / valeur */
 .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 18px; row-gap: 4px; max-width: 90ch; }
